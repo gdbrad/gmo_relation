@@ -3,6 +3,7 @@ import numpy as np
 import gvar as gv
 import matplotlib
 import matplotlib.pyplot as plt
+import non_analytic_functions as naf
 
 # Set defaults for plots
 import matplotlib as mpl
@@ -63,6 +64,7 @@ def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
             plt.title("Best fit for $N_{states} = $%s" %(n_states['corr']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
+        plt.ylim(1.4,1.5)
         plt.legend()
         plt.grid(True)
         plt.xlabel('$t$', fontsize = 24)
@@ -106,7 +108,7 @@ def gmo_eff_mass(gmo_out=None,dt=None):
         
     if dt is None:
         dt = 1
-    return {key : 1/dt * np.log(gmo_out[key] / np.roll(gmo_out[key], -1)) for key in list(gmo_out.keys())}
+    return {key : 1/dt * (gmo_out[key] / np.roll(gmo_out[key], -1)) for key in list(gmo_out.keys())}
 
 class GMO(object):
     '''
@@ -129,19 +131,13 @@ class GMO(object):
         return self._G_gmo()
 
     def _G_gmo(self,log=None):
-        result = np.empty(self.t, dtype=gv._gvarcore.GVar)
+        result = {}
         # print(result)
-        for T in range(self.t): 
-            result[T] = (
-                (self.lam[T] * (self.sigma[T])**1/3) / (self.nucleon[T] **2/3)*  (self.xi[T])**2/3
+        for smr in ['PS','SS']: 
+            result[smr] = (
+                (self.lam[T] * (self.sigma[T])**1/3) * (self.nucleon[T]**(-2/3))*  (self.xi[T])**(-2/3)
                     )
-        if log:
-            return np.log(result)
-        else:
-            
-            return result 
-
-
+        return gv.dataset.avg_data(result)
 
     @property 
     def gmo_violation(self):
@@ -151,7 +147,7 @@ class GMO(object):
         numer = self.lam + 1/3*(self.sigma) - 2/3*self.nucleon - 2/3*self.xi 
         denom = 1/8*self.lam + 3/8*self.sigma + 1/4*self.nucleon + 1/4*self.xi
         output += numer/denom 
-        return output
+        return str('numerator in gmo rln:'), numer, str('denom in gmo rln:'),denom, str('gmo violation as ratio of above:'),output
 
     # def plot_mq_gmo(self):
     #     def log_gmo(self):
@@ -175,6 +171,7 @@ class GMO_xpt():
         super(GMO,self).__init__(model)
         self.data = data 
         self.params = params
+        self.delta = False # TODO inclusion of delta res flag in xpt expressions
         params = {}
         if tree_level:
             params['D'] = 0.8 #axial couplings between the octet baryons
@@ -184,14 +181,31 @@ class GMO_xpt():
             params['D'] = 0.6 #axial couplings between the octet baryons
             params['F'] = 0.4 #axial coupling b/w octet of pseudo-Goldstone bosons,
             params['C'] = 1.2 #axial coupling among the decuplet of baryon resonances
+
+    @property
+    def m_eta(self):
+        return 1/3*np.sqrt(3)*np.sqrt((self.data['m_k']**2 - self.data['m_pi']**2))
+
         
     @property
-    def lo_xpt(self):
-        1/(24*np.pi*self.fpi**2)* (
+    def lo_gmo(self):
+        return self._lo_gmo()
+    def _lo_gmo(self):
+        output = 0
+        output += 1/(24*np.pi*self.fpi**2)* (
             (2/3*self.params['D']**2 - 2*self.params['F']**2 )
-            *(4*self.data['m_k']**3 - 3*self.data['m_eta']**3 - self.data['m_pi']**3) - self.params['C']**2/9*np.pi(4*naf.fcn_F(eps_pi=self.data['m_k']) - 3*naf.fcn_F(self.data['m_eta'] - naf.fcn_F(self.data['m_pi'])) ))
+            *(4*self.data['m_k']**3 - 3*self.m_eta**3 - self.data['m_pi']**3) - self.params['C']**2/9*np.pi(4*naf.fcn_F(eps_pi=self.data['m_k']) - 3*naf.fcn_F(self.m_eta - naf.fcn_F(self.data['m_pi'])) ))
+        return output
 
+    # def nlo_gmo(self):
+    #     return self._nlo_gmo()
 
+    # def _nlo_gmo(self):
+    #     output = 0
+    #     output += self.a1**2/(32*np.pi*self.fpi**2)* (
+    #         (2/3*self.params['D']**2 - 2*self.params['F']**2 )
+    #         *(4*self.data['m_k']**3 - 3*self.m_eta**3 - self.data['m_pi']**3) - self.params['C']**2/9*np.pi(4*naf.fcn_F(eps_pi=self.data['m_k']) - 3*naf.fcn_F(self.m_eta - naf.fcn_F(self.data['m_pi'])) ))
+    #     return output
 
 class Mass_Combinations(object):
 

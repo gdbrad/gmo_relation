@@ -16,9 +16,10 @@ from gmo_fitter import fitter
 
 class fit_ensemble(object):
 
-    def __init__(self, t_range, prior, n_states=None,
+    def __init__(self, t_range,t_period, prior, n_states=None,
                  nucleon_corr_data=None,lam_corr_data=None,
-                 xi_corr_data=None,sigma_corr_data=None
+                 xi_corr_data=None,sigma_corr_data=None,
+                 piplus_corr_data = None,kplus_corr_data = None
                  ):
         #All fit ensembles (manual and automatic) must have these variables
         
@@ -39,6 +40,14 @@ class fit_ensemble(object):
             sigma_corr_gv = gv.dataset.avg_data(sigma_corr_data)
         else:
             sigma_corr_gv = None
+        if piplus_corr_data is not None:
+            piplus_corr_gv = gv.dataset.avg_data(piplus_corr_data)
+        else:
+            piplus_corr_gv = None
+        if kplus_corr_data is not None:
+            kplus_corr_gv = gv.dataset.avg_data(kplus_corr_data)
+        else:
+            kplus_corr_gv = None
 
         # Default to a 1 state fit
         if n_states is None:
@@ -59,53 +68,98 @@ class fit_ensemble(object):
         self.lam_corr_gv = lam_corr_gv
         self.sigma_corr_gv = sigma_corr_gv
         self.xi_corr_gv = xi_corr_gv
+        self.piplus_corr_gv = piplus_corr_gv
+        self.kplus_corr_gv = kplus_corr_gv
 
         # self.multiple_smear = None
         self.n_states = n_states
         self.prior = prior
         self.t_range = t_range
+        self.t_period = t_period
         self.t_delta = 2*max_n_states
         self.t_min = int(t_start/2)
         self.t_max = int(np.min([t_end, t_end]))
         self.fits = {}
         #self.bs = None
 
-    def get_fit(self, t_range=None, n_states=None):
+    def get_fit(self, t_range=None, n_states=None,t_period=None):
         if t_range is None:
             t_range = self.t_range
         if n_states is None:
             n_states = self.n_states
+        if t_period is None:
+            t_period = self.t_period
 
         index = tuple((t_range[key][0], t_range[key][1], n_states[key]) for key in sorted(t_range.keys()))
-        # print(index)
+        print(index)
 
         if index in list(self.fits.keys()):
             return self.fits[index]
         else:
-            temp_fit = fitter(n_states=n_states, prior=self.prior, t_range=t_range,
+            temp_fit = fitter(n_states=n_states, prior=self.prior, t_range=t_range, t_period=t_period,
                                nucleon_corr=self.nucleon_corr_gv,lam_corr=self.lam_corr_gv,
-                               xi_corr=self.xi_corr_gv,sigma_corr=self.sigma_corr_gv).get_fit()
+                               xi_corr=self.xi_corr_gv,sigma_corr=self.sigma_corr_gv, piplus_corr=self.piplus_corr_gv,
+                               kplus_corr=self.kplus_corr_gv).get_fit()
 
             self.fits[index] = temp_fit
             return temp_fit
 
     # type should be either "corr, "gA", or "gV"
-    def _get_models(self, model_type='corr'):
+    def _get_models(self, model_type=None):
+        
+        # data_gv = [nucleon_corr , lam_corr ,sigma_corr, xi_corr]?
         if model_type is None:
             return None
-        elif model_type == "corr":
+        #data_gv = [nucleon_corr , lam_corr ,sigma_corr, xi_corr] 
+        elif model_type == "sigma":
+            nucleon_corr = None
+            lam_corr = None
+            sigma_corr = self.sigma_corr_gv
+            xi_corr = None
+            piplus_corr = None
+            kplus_corr = None
+        elif model_type == "xi":
+            nucleon_corr = None
+            lam_corr = None
+            sigma_corr = None
+            xi_corr = self.xi_corr_gv
+            piplus_corr = None
+            kplus_corr = None
+
+        elif model_type == "lam":
+            nucleon_corr = None
+            lam_corr = self.lam_corr_gv
+            sigma_corr = None
+            xi_corr = None
+            piplus_corr = None
+            kplus_corr = None
+
+        elif model_type == "proton":
+            nucleon_corr = self.nucleon_corr_gv
+            lam_corr = None
+            sigma_corr = None
+            xi_corr = None
+            piplus_corr = None
+            kplus_corr = None
+
+        elif model_type == 'gmo':
             nucleon_corr = self.nucleon_corr_gv
             lam_corr = self.lam_corr_gv
             sigma_corr = self.sigma_corr_gv
             xi_corr = self.xi_corr_gv
+            piplus_corr = None
+            kplus_corr = None
+
+
         else:
-            return None
+            return None 
 
         #print nucleon_corr_gv, axial_fh_num_gv, vector_fh_num_gv
 
-        return fitter(n_states=self.n_states, prior=self.prior, t_range=self.t_range,
+        return fitter(n_states=self.n_states, prior=self.prior, t_range=self.t_range,t_period=self.t_period,
                       nucleon_corr=nucleon_corr,lam_corr=lam_corr,
-                               xi_corr=xi_corr,sigma_corr=sigma_corr)._make_models_simult_fit()
+                               xi_corr=xi_corr,sigma_corr=sigma_corr,
+                               piplus_corr=piplus_corr,kplus_corr=kplus_corr)._make_models_simult_fit()
 
     def _generate_data_from_fit(self, t, t_start=None, t_end=None, model_type=None, n_states=None):
         if model_type is None:
@@ -226,7 +280,7 @@ class fit_ensemble(object):
 
         return fig
 
-    def plot_effective_mass(self, nucleon_corr_gv=None, t_plot_min=None,
+    def plot_effective_mass(self, nucleon_corr_gv=None, t_plot_min=None, model_type=None,
                             t_plot_max=None, show_plot=True, show_fit=True,fig_name=None):
         if t_plot_min is None:
             t_plot_min = self.t_min
@@ -259,7 +313,7 @@ class fit_ensemble(object):
         if show_fit:
             t = np.linspace(t_plot_min-2, t_plot_max+2)
             dt = (t[-1] - t[0])/(len(t) - 1)
-            fit_data_gv = self._generate_data_from_fit(model_type="corr", t=t)
+            fit_data_gv = self._generate_data_from_fit(model_type=model_type, t=t)
 
             for j, key in enumerate(fit_data_gv.keys()):
                 eff_mass_fit = self.get_nucleon_effective_mass(fit_data_gv, dt)[key][1:-1]
@@ -269,7 +323,7 @@ class fit_ensemble(object):
                 plt.plot(t[1:-1], pm(eff_mass_fit, 1), t[1:-1], pm(eff_mass_fit, -1), color=colors[j%len(colors)])
                 plt.fill_between(t[1:-1], pm(eff_mass_fit, -1), pm(eff_mass_fit, 1),
                                  facecolor=colors[j%len(colors)], alpha = 0.10, rasterized=True)
-            plt.title("Best fit for $N_{states} = $%s" %(self.n_states['corr']), fontsize = 24)
+            plt.title("Best fit for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
         plt.legend()

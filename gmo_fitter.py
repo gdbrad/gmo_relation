@@ -4,10 +4,13 @@ import gvar as gv
 
 class fitter(object):
 
-    def __init__(self, n_states,prior, t_range,
-                 nucleon_corr=None,lam_corr=None,xi_corr=None,sigma_corr=None):
+    def __init__(self, n_states,prior, t_period,t_range,
+                 nucleon_corr=None,lam_corr=None,
+                 xi_corr=None,sigma_corr=None,
+                 piplus_corr=None, kplus_corr=None):
 
         self.n_states = n_states
+        self.t_period = t_period
         self.t_range = t_range
         self.prior = prior
         # self.single_smear = single_smear
@@ -17,6 +20,9 @@ class fitter(object):
         self.sigma_corr=sigma_corr
         self.nucleon_corr=nucleon_corr
         self.xi_corr=xi_corr
+        self.piplus_corr = piplus_corr
+        self.kplus_corr = kplus_corr
+
         self.fit = None
         self.prior = self._make_prior(prior)
         # self.fits = {}
@@ -60,8 +66,6 @@ class fitter(object):
         return output
 
     def _make_fit(self):
-        # LOGIC FOR SIMULTANEOUS FITS
-        # This is the convoluted way we use MultiFitter
         # Essentially: first we create a model (which is a subclass of MultiFitter)
         # Then we make a fitter using the models
         # Finally, we make the fit with our two sets of correlators
@@ -82,88 +86,88 @@ class fitter(object):
             # if self.mutliple_smear == False:
             for sink in list(self.nucleon_corr.keys()):
                 param_keys = {
-                    'E0'      : 'E0',
+                    'proton_E0'      : 'proton_E0',
                     # 'E1'      : 'E1',
                     # 'E2'      : 'E2',
                     # 'E3'      : 'E3',
-                    'log(dE)' : 'log(dE)',
-                    'z'      : 'z_'+sink 
+                    'proton_log(dE)' : 'proton_log(dE)',
+                    'proton_z'      : 'proton_z_'+sink 
                     # 'z_PS'      : 'z_PS',
                 }   
                 models = np.append(models,
-                        baryon_model(datatag="nucleon_"+sink,
-                        t=list(range(self.t_range['corr'][0], self.t_range['corr'][1])),
-                        param_keys=param_keys, n_states=self.n_states['corr']))
+                        proton_model(datatag="nucleon_"+sink,
+                        t=list(range(self.t_range['proton'][0], self.t_range['proton'][1])),
+                        param_keys=param_keys, n_states=self.n_states['proton']))
         if self.lam_corr is not None:
             # if self.mutliple_smear == False:
             for sink in list(self.lam_corr.keys()):
                 param_keys = {
-                    'E0'      : 'E0',
+                    'lam_E0'      : 'lam_E0',
                     # 'E1'      : 'E1',
                     # 'E2'      : 'E2',
                     # 'E3'      : 'E3',
-                    'log(dE)' : 'log(dE)',
-                    'z'      : 'z_'+sink 
+                    'lam_log(dE)' : 'lam_log(dE)',
+                    'lam_z'      : 'lam_z_'+sink 
                     # 'z_PS'      : 'z_PS',
                 }   
                 models = np.append(models,
-                        baryon_model(datatag="lam_"+sink,
-                        t=list(range(self.t_range['corr'][0], self.t_range['corr'][1])),
-                        param_keys=param_keys, n_states=self.n_states['corr']))
+                        lam_model(datatag="lam_"+sink,
+                        t=list(range(self.t_range['lam'][0], self.t_range['lam'][1])),
+                        param_keys=param_keys, n_states=self.n_states['lam']))
         if self.xi_corr is not None:
             # if self.mutliple_smear == False:
             for sink in list(self.xi_corr.keys()):
                 param_keys = {
-                    'E0'      : 'E0',
+                    'xi_E0'      : 'xi_E0',
                     # 'E1'      : 'E1',
                     # 'E2'      : 'E2',
                     # 'E3'      : 'E3',
-                    'log(dE)' : 'log(dE)',
-                    'z'      : 'z_'+sink 
+                    'xi_log(dE)' : 'xi_log(dE)',
+                    'xi_z'      : 'xi_z_'+sink 
                     # 'z_PS'      : 'z_PS',
                 }   
                 models = np.append(models,
-                        baryon_model(datatag="xi_"+sink,
-                        t=list(range(self.t_range['corr'][0], self.t_range['corr'][1])),
-                        param_keys=param_keys, n_states=self.n_states['corr']))
+                        xi_model(datatag="xi_"+sink,
+                        t=list(range(self.t_range['xi'][0], self.t_range['xi'][1])),
+                        param_keys=param_keys, n_states=self.n_states['xi']))
         
         if self.sigma_corr is not None:
             # if self.mutliple_smear == False:
             for sink in list(self.sigma_corr.keys()):
                 param_keys = {
-                    'E0'      : 'E0',
+                    'sigma_E0'      : 'sigma_E0',
                     # 'E1'      : 'E1',
                     # 'E2'      : 'E2',
                     # 'E3'      : 'E3',
-                    'log(dE)' : 'log(dE)',
-                    'z'      : 'z_'+sink 
+                    'sigma_log(dE)' : 'sigma_log(dE)',
+                    'sigma_z'      : 'sigma_z_'+sink 
                     # 'z_PS'      : 'z_PS',
                 }   
                 models = np.append(models,
-                        baryon_model(datatag="sigma_"+sink,
-                        t=list(range(self.t_range['corr'][0], self.t_range['corr'][1])),
-                        param_keys=param_keys, n_states=self.n_states['corr']))
+                        sigma_model(datatag="sigma_"+sink,
+                        t=list(range(self.t_range['sigma'][0], self.t_range['sigma'][1])),
+                        param_keys=param_keys, n_states=self.n_states['sigma']))
 
-        if self.pi_corr is not None:
-            for sink in list(self.pi_corr.keys()):
+        if self.piplus_corr is not None:
+            for sink in list(self.piplus_corr.keys()):
                 param_keys = {
                     'log(E0)' : 'log(E0)',
                     'log(dE)' : 'log(dE)',
-                    'z'      : 'z_'+sink,
+                    'z'      : 'z_'+sink
                 }
                 models = np.append(models,
-                           MesonModel(datatag="pi_"+sink,t=list(range(self.t_range['corr'][0], self.t_range['corr'][1]), t_period=self.t_period,
+                           MesonModel(datatag="piplus_"+sink,t=list(range(self.t_range['corr'][0], self.t_range['corr'][1]), t_period=self.t_period,
                            param_keys=param_keys, n_states=self.n_states['corr'])))
 
-        if self.kaon_corr is not None:
-            for sink in list(self.pi_corr.keys()):
+        if self.kplus_corr is not None:
+            for sink in list(self.kplus_corr.keys()):
                 param_keys = {
                     'log(E0)' : 'log(E0)',
                     'log(dE)' : 'log(dE)',
                     'z'      : 'z_'+sink,
                 }
                 models = np.append(models,
-                           MesonModel(datatag="pi_"+sink,t=list(range(self.t_range['corr'][0], self.t_range['corr'][1]), t_period=self.t_period,
+                           MesonModel(datatag="kplus_"+sink,t=list(range(self.t_range['corr'][0], self.t_range['corr'][1]), t_period=self.t_period,
                            param_keys=param_keys, n_states=self.n_states['corr'])))
         return models
 
@@ -172,20 +176,26 @@ class fitter(object):
         data = {}
         if self.nucleon_corr is not None:
             for sinksrc in list(self.nucleon_corr.keys()):
-                data["nucleon_"+sinksrc] = self.nucleon_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
+                data["nucleon_"+sinksrc] = self.nucleon_corr[sinksrc][self.t_range['proton'][0]:self.t_range['proton'][1]]
         if self.lam_corr is not None:
             for sinksrc in list(self.lam_corr.keys()):
-                data["lam_"+sinksrc] = self.lam_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
+                data["lam_"+sinksrc] = self.lam_corr[sinksrc][self.t_range['lam'][0]:self.t_range['lam'][1]]
         if self.sigma_corr is not None:
             for sinksrc in list(self.sigma_corr.keys()):
-                data["sigma_"+sinksrc] = self.sigma_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
-
+                data["sigma_"+sinksrc] = self.sigma_corr[sinksrc][self.t_range['sigma'][0]:self.t_range['sigma'][1]]
         if self.xi_corr is not None:
             for sinksrc in list(self.xi_corr.keys()):
-                data["xi_"+sinksrc] = self.xi_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
+                data["xi_"+sinksrc] = self.xi_corr[sinksrc][self.t_range['xi'][0]:self.t_range['xi'][1]]
+        if self.piplus_corr is not None:
+            for sinksrc in list(self.piplus_corr.keys()):
+                data["piplus_"+sinksrc] = self.piplus_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
+        if self.kplus_corr is not None:
+            for sinksrc in list(self.kplus_corr.keys()):
+                data["kplus_"+sinksrc] = self.kplus_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
         return data
 
     def _make_prior_nested(self, prior):
+        # not used yet, dont think multifitter can take nested dicts as inputs without modifications #
         resized_prior = {}
 
         max_n_states = np.max([self.n_states[key] for key in list(self.n_states.keys())])
@@ -229,32 +239,34 @@ class fitter(object):
             resized_prior[key] = prior[key][:max_n_states]
 
         new_prior = resized_prior.copy()
-        new_prior['E0'] = resized_prior['E'][0]
+        for corr in ['proton','sigma','lam','xi']:
+
+            new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
 
         # Don't need this entry
-        new_prior.pop('E', None)
+            new_prior.pop(corr+'_E', None)
 
         # We force the energy to be positive by using the log-normal dist of dE
         # let log(dE) ~ eta; then dE ~ e^eta
-        new_prior['log(dE)'] = gv.gvar(np.zeros(len(resized_prior['E']) - 1))
-        for j in range(len(new_prior['log(dE)'])):
-            #excited_state_energy = p[self.mass] + np.sum([np.exp(p[self.log_dE][k]) for k in range(j-1)], axis=0)
+            new_prior[corr+'_log(dE)'] = gv.gvar(np.zeros(len(resized_prior[corr+'_E']) - 1))
+            for j in range(len(new_prior[corr+'_log(dE)'])):
+                #excited_state_energy = p[self.mass] + np.sum([np.exp(p[self.log_dE][k]) for k in range(j-1)], axis=0)
 
-            # Notice that I've coded this s.t.
-            # the std is determined entirely by the excited state
-            # dE_mean = gv.mean(resized_prior['E'][j+1] - resized_prior['E'][j])
-            # dE_std = gv.sdev(resized_prior['E'][j+1])
-            temp = gv.gvar(resized_prior['E'][j+1]) - gv.gvar(resized_prior['E'][j])
-            temp2 = gv.gvar(resized_prior['E'][j+1])
-            temp_gvar = gv.gvar(temp.mean,temp2.sdev)
-            new_prior['log(dE)'][j] = np.log(temp_gvar)
+                # Notice that I've coded this s.t.
+                # the std is determined entirely by the excited state
+                # dE_mean = gv.mean(resized_prior['E'][j+1] - resized_prior['E'][j])
+                # dE_std = gv.sdev(resized_prior['E'][j+1])
+                temp = gv.gvar(resized_prior[corr+'_E'][j+1]) - gv.gvar(resized_prior[corr+'_E'][j])
+                temp2 = gv.gvar(resized_prior[corr+'_E'][j+1])
+                temp_gvar = gv.gvar(temp.mean,temp2.sdev)
+                new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
 
         return new_prior
 
 
-class baryon_model(lsqfit.MultiFitterModel):
+class proton_model(lsqfit.MultiFitterModel):
     def __init__(self, datatag, t, param_keys, n_states):
-        super(baryon_model, self).__init__(datatag)
+        super(proton_model, self).__init__(datatag)
         # variables for fit
         self.t = np.array(t)
         self.n_states = n_states
@@ -264,13 +276,12 @@ class baryon_model(lsqfit.MultiFitterModel):
     def fitfcn(self, p, t=None):
         if t is None:
             t = self.t
-
         # z_PS = p[self.param_keys['z_PS']]
         # z_SS = p[self.param_keys['z_SS']]
-        z = p[self.param_keys['z']]
+        z = p[self.param_keys['proton_z']]
         # print(self.param_keys)
-        E0 = p[self.param_keys['E0']]
-        log_dE = p[self.param_keys['log(dE)']]
+        E0 = p[self.param_keys['proton_E0']]
+        log_dE = p[self.param_keys['proton_log(dE)']]
         # wf = 0
         output = z[0] * np.exp(-E0 * t)
         # print(output)
@@ -298,6 +309,120 @@ class baryon_model(lsqfit.MultiFitterModel):
     #     num += self.fitfcn()
 
     #     return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
+
+class lam_model(lsqfit.MultiFitterModel):
+    def __init__(self, datatag, t, param_keys, n_states):
+        super(lam_model, self).__init__(datatag)
+        # variables for fit
+        self.t = np.array(t)
+        self.n_states = n_states
+        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
+        self.param_keys = param_keys
+
+    def fitfcn(self, p, t=None):
+        if t is None:
+            t = self.t
+
+        # z_PS = p[self.param_keys['z_PS']]
+        # z_SS = p[self.param_keys['z_SS']]
+        z = p[self.param_keys['lam_z']]
+        # print(self.param_keys)
+        E0 = p[self.param_keys['lam_E0']]
+        log_dE = p[self.param_keys['lam_log(dE)']]
+        # wf = 0
+        output = z[0] * np.exp(-E0 * t)
+        # print(output)
+        for j in range(1, self.n_states):
+            excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
+            output = output +z[j] * np.exp(-excited_state_energy * t)
+        return output
+
+    # The prior determines the variables that will be fit by multifitter --
+    # each entry in the prior returned by this function will be fitted
+    def buildprior(self, prior, mopt=None, extend=False):
+        # Extract the model's parameters from prior.
+        return prior
+
+    def builddata(self, data):
+        # Extract the model's fit data from data.
+        # Key of data must match model's datatag!
+        return data[self.datatag]
+
+class xi_model(lsqfit.MultiFitterModel):
+    def __init__(self, datatag, t, param_keys, n_states):
+        super(xi_model, self).__init__(datatag)
+        # variables for fit
+        self.t = np.array(t)
+        self.n_states = n_states
+        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
+        self.param_keys = param_keys
+
+    def fitfcn(self, p, t=None):
+        if t is None:
+            t = self.t
+
+        # z_PS = p[self.param_keys['z_PS']]
+        # z_SS = p[self.param_keys['z_SS']]
+        z = p[self.param_keys['xi_z']]
+        # print(self.param_keys)
+        E0 = p[self.param_keys['xi_E0']]
+        log_dE = p[self.param_keys['xi_log(dE)']]
+        # wf = 0
+        output = z[0] * np.exp(-E0 * t)
+        # print(output)
+        for j in range(1, self.n_states):
+            excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
+            output = output +z[j] * np.exp(-excited_state_energy * t)
+        return output
+
+    # The prior determines the variables that will be fit by multifitter --
+    # each entry in the prior returned by this function will be fitted
+    def buildprior(self, prior, mopt=None, extend=False):
+        # Extract the model's parameters from prior.
+        return prior
+
+    def builddata(self, data):
+        # Extract the model's fit data from data.
+        # Key of data must match model's datatag!
+        return data[self.datatag]
+
+class sigma_model(lsqfit.MultiFitterModel):
+    def __init__(self, datatag, t, param_keys, n_states):
+        super(sigma_model, self).__init__(datatag)
+        # variables for fit
+        self.t = np.array(t)
+        self.n_states = n_states
+        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
+        self.param_keys = param_keys
+
+    def fitfcn(self, p, t=None):
+        if t is None:
+            t = self.t
+
+        # z_PS = p[self.param_keys['z_PS']]
+        # z_SS = p[self.param_keys['z_SS']]
+        z = p[self.param_keys['sigma_z']]
+        # print(self.param_keys)
+        E0 = p[self.param_keys['sigma_E0']]
+        log_dE = p[self.param_keys['sigma_log(dE)']]
+        # wf = 0
+        output = z[0] * np.exp(-E0 * t)
+        # print(output)
+        for j in range(1, self.n_states):
+            excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
+            output = output +z[j] * np.exp(-excited_state_energy * t)
+        return output
+
+    # The prior determines the variables that will be fit by multifitter --
+    # each entry in the prior returned by this function will be fitted
+    def buildprior(self, prior, mopt=None, extend=False):
+        # Extract the model's parameters from prior.
+        return prior
+
+    def builddata(self, data):
+        # Extract the model's fit data from data.
+        # Key of data must match model's datatag!
+        return data[self.datatag]
 
 # Used for particles that obey bose-einstein statistics
 class MesonModel(lsqfit.MultiFitterModel):
