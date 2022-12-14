@@ -125,7 +125,7 @@ class GMO(object):
         # self.nucleon = nucleon
         # self.xi = xi  
         # self.t = t
-        self.file = '/home/gmoney/lqcd/data/c51_2pt_octet_decuplet.h5'
+        self.file = file
         self.abbr = abbr
 
 
@@ -160,7 +160,23 @@ class GMO(object):
         numer = self.lam + 1/3*(self.sigma) - 2/3*self.nucleon - 2/3*self.xi 
         denom = 1/8*self.lam + 3/8*self.sigma + 1/4*self.nucleon + 1/4*self.xi
         output += numer/denom 
-        return str('numerator in gmo rln:'), numer, str('denom in gmo rln:'),denom, str('gmo violation as ratio of above:'),output
+        return str('gmo rln:'), numer, str('single octet:'),denom, str('gmo violation as ratio of above:'),output
+
+    def _get_meson_data(self):
+        '''
+        no direct computation of m_eta on lattice due to issues w/ disconnected diagrams; Express in terms of meson gmo relation eg. lattice data for pion and kaon parameters
+        '''
+        temp = {}
+        for smr in ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle='proton'): 
+            for part in ['piplus', 'kplus']:
+                temp[(part, smr)] = ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle=part)[smr]
+            temp[('eta',smr)] = (
+                1/3*np.sqrt(3)
+                * np.power((np.power(temp[('kplus',smr)],2) 
+                - np.power(temp[('piplus',smr)],2)),3/2)
+            )
+        temp = gv.dataset.avg_data(temp)
+        return temp
 
     # def plot_mq_gmo(self):
     #     def log_gmo(self):
@@ -182,7 +198,7 @@ class GMO_xpt():
     '''
     def __init__(self,model,data,params,tree_level=None,loop_level=None):
         super(GMO,self).__init__(model)
-        self.data = data 
+        self.data = self._get_data(data) 
         self.params = params
         self.delta = False # TODO inclusion of delta res flag in xpt expressions
         params = {}
@@ -195,15 +211,14 @@ class GMO_xpt():
             params['F'] = 0.4 #axial coupling b/w octet of pseudo-Goldstone bosons,
             params['C'] = 1.2 #axial coupling among the decuplet of baryon resonances
 
-    @property
-    def m_eta(self):
-        return 1/3*np.sqrt(3)*np.sqrt((self.data['m_k']**2 - self.data['m_pi']**2))
-
-        
+    
     @property
     def lo_gmo(self):
         return self._lo_gmo()
     def _lo_gmo(self):
+        '''
+        the $/mu$ independence of of baryon gmo rln is protected by the meson gmo rln, so no counterterms are required in the lo xpt expression
+        '''
         output = 0
         output += 1/(24*np.pi*self.fpi**2)* (
             (2/3*self.params['D']**2 - 2*self.params['F']**2 )

@@ -16,7 +16,7 @@ from gmo_fitter import fitter
 
 class fit_ensemble(object):
 
-    def __init__(self, t_range,t_period, prior, n_states=None,
+    def __init__(self, t_range,t_period, prior, n_states=None, model_type = None,
                  nucleon_corr_data=None,lam_corr_data=None,
                  xi_corr_data=None,sigma_corr_data=None,
                  piplus_corr_data = None,kplus_corr_data = None
@@ -63,7 +63,7 @@ class fit_ensemble(object):
 
         max_n_states = np.max([n_states[key] for key in list(n_states.keys())])
 
-
+        self.model_type = model_type
         self.nucleon_corr_gv = nucleon_corr_gv
         self.lam_corr_gv = lam_corr_gv
         self.sigma_corr_gv = sigma_corr_gv
@@ -96,7 +96,7 @@ class fit_ensemble(object):
         if index in list(self.fits.keys()):
             return self.fits[index]
         else:
-            temp_fit = fitter(n_states=n_states, prior=self.prior, t_range=t_range, t_period=t_period,
+            temp_fit = fitter(n_states=n_states, prior=self.prior, t_range=t_range, t_period=t_period,model_type=self.model_type,
                                nucleon_corr=self.nucleon_corr_gv,lam_corr=self.lam_corr_gv,
                                xi_corr=self.xi_corr_gv,sigma_corr=self.sigma_corr_gv, piplus_corr=self.piplus_corr_gv,
                                kplus_corr=self.kplus_corr_gv).get_fit()
@@ -150,13 +150,21 @@ class fit_ensemble(object):
             piplus_corr = None
             kplus_corr = None
 
+        elif model_type == "meson":
+            nucleon_corr = None
+            lam_corr = None
+            sigma_corr = None
+            xi_corr = None
+            piplus_corr = self.piplus_corr_gv
+            kplus_corr = self.kplus_corr_gv
+
 
         else:
             return None 
 
         #print nucleon_corr_gv, axial_fh_num_gv, vector_fh_num_gv
 
-        return fitter(n_states=self.n_states, prior=self.prior, t_range=self.t_range,t_period=self.t_period,
+        return fitter(n_states=self.n_states, prior=self.prior, t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
                       nucleon_corr=nucleon_corr,lam_corr=lam_corr,
                                xi_corr=xi_corr,sigma_corr=sigma_corr,
                                piplus_corr=piplus_corr,kplus_corr=kplus_corr)._make_models_simult_fit()

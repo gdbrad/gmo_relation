@@ -7,7 +7,7 @@ class fitter(object):
     def __init__(self, n_states,prior, t_period,t_range,
                  nucleon_corr=None,lam_corr=None,
                  xi_corr=None,sigma_corr=None,
-                 piplus_corr=None, kplus_corr=None):
+                 piplus_corr=None, kplus_corr=None,model_type=None):
 
         self.n_states = n_states
         self.t_period = t_period
@@ -24,6 +24,7 @@ class fitter(object):
         self.kplus_corr = kplus_corr
 
         self.fit = None
+        self.model_type = model_type
         self.prior = self._make_prior(prior)
         # self.fits = {}
         # self.extrapolate = None
@@ -151,24 +152,24 @@ class fitter(object):
         if self.piplus_corr is not None:
             for sink in list(self.piplus_corr.keys()):
                 param_keys = {
-                    'log(E0)' : 'log(E0)',
-                    'log(dE)' : 'log(dE)',
-                    'z'      : 'z_'+sink
+                    'piplus_E0' : 'piplus_E0',
+                    'piplus_log(dE)' : 'piplus_log(dE)',
+                    'piplus_z'      : 'piplus_z_'+sink
                 }
                 models = np.append(models,
-                           MesonModel(datatag="piplus_"+sink,t=list(range(self.t_range['corr'][0], self.t_range['corr'][1]), t_period=self.t_period,
-                           param_keys=param_keys, n_states=self.n_states['corr'])))
+                           pi_Model(datatag="piplus_"+sink,t=list(range(self.t_range['pi'][0], self.t_range['pi'][1])), t_period=self.t_period,
+                           param_keys=param_keys, n_states=self.n_states['pi']))
 
         if self.kplus_corr is not None:
             for sink in list(self.kplus_corr.keys()):
                 param_keys = {
-                    'log(E0)' : 'log(E0)',
-                    'log(dE)' : 'log(dE)',
-                    'z'      : 'z_'+sink,
+                    'kplus_E0' : 'kplus_E0',
+                    'kplus_log(dE)' : 'kplus_log(dE)',
+                    'kplus_z'      : 'kplus_z_'+sink,
                 }
                 models = np.append(models,
-                           MesonModel(datatag="kplus_"+sink,t=list(range(self.t_range['corr'][0], self.t_range['corr'][1]), t_period=self.t_period,
-                           param_keys=param_keys, n_states=self.n_states['corr'])))
+                           kplus_Model(datatag="kplus_"+sink,t=list(range(self.t_range['kplus'][0], self.t_range['kplus'][1])), t_period=self.t_period,
+                           param_keys=param_keys, n_states=self.n_states['kplus']))
         return models
 
     # data array needs to match size of t array
@@ -188,10 +189,10 @@ class fitter(object):
                 data["xi_"+sinksrc] = self.xi_corr[sinksrc][self.t_range['xi'][0]:self.t_range['xi'][1]]
         if self.piplus_corr is not None:
             for sinksrc in list(self.piplus_corr.keys()):
-                data["piplus_"+sinksrc] = self.piplus_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
+                data["piplus_"+sinksrc] = self.piplus_corr[sinksrc][self.t_range['pi'][0]:self.t_range['pi'][1]]
         if self.kplus_corr is not None:
             for sinksrc in list(self.kplus_corr.keys()):
-                data["kplus_"+sinksrc] = self.kplus_corr[sinksrc][self.t_range['corr'][0]:self.t_range['corr'][1]]
+                data["kplus_"+sinksrc] = self.kplus_corr[sinksrc][self.t_range['kplus'][0]:self.t_range['kplus'][1]]
         return data
 
     def _make_prior_nested(self, prior):
@@ -239,7 +240,7 @@ class fitter(object):
             resized_prior[key] = prior[key][:max_n_states]
 
         new_prior = resized_prior.copy()
-        for corr in ['proton','sigma','lam','xi']:
+        for corr in ['sigma','lam','proton','xi','piplus','kplus']:
 
             new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
 
@@ -425,9 +426,65 @@ class sigma_model(lsqfit.MultiFitterModel):
         return data[self.datatag]
 
 # Used for particles that obey bose-einstein statistics
-class MesonModel(lsqfit.MultiFitterModel):
+class pi_Model(lsqfit.MultiFitterModel):
     def __init__(self, datatag, t, t_period, param_keys, n_states):
-        super(MesonModel, self).__init__(datatag)
+        super(pi_Model, self).__init__(datatag)
+        # variables for fit
+        self.t = np.array(t)
+        self.t_period = 64
+        self.n_states = n_states
+
+        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
+        self.param_keys = param_keys
+
+
+    def fitfcn(self, p, t=None):
+
+        if t is None:
+            t = self.t
+
+        z = p[self.param_keys['piplus_z']]
+        E0 = p[self.param_keys['piplus_E0']]
+        dE = np.exp(p[self.param_keys['piplus_log(dE)']])
+        #  r += z_snk * z_src * (np.exp(-E_n*t) + np.exp(-E_n*(T-t)))
+
+        # r += z_snk * z_src * (np.exp(-E_n*t) + np.exp(-E_n*(T-t)))
+        # return r
+        output = z[0] * (np.cosh(E0 *(t-self.t_period/2)))
+        for j in range(1, self.n_states):
+            E_j = E0 + np.sum([dE[k] for k in range(j)], axis=0)
+            output = output+ z[j] *np.cosh( E_j *(t-self.t_period/2))
+        #     output = output + z[j] * np.exp( -E_j * (self.t_period-t) )
+
+        return output
+
+    # The prior determines the variables that will be fit by multifitter --
+    # each entry in the prior returned by this function will be fitted
+    def buildprior(self, prior, mopt=None, extend=False):
+        return prior
+
+
+    def builddata(self, data):
+        # Extract the model's fit data from data.
+        # Key of data must match model's datatag!
+        return data[self.datatag]
+
+
+    def fcn_effective_mass(self, p, t=None):
+        if t is None:
+            t=self.t
+
+        return np.arccosh((self.fitfcn(p, t-1) + self.fitfcn(p, t+1))/(2*self.fitfcn(p, t)))
+
+
+    def fcn_effective_wf(self, p, t=None):
+        if t is None:
+            t=self.t
+        return 1 / np.cosh(self.fcn_effective_mass(p, t)*(t - self.t_period/2)) * self.fitfcn(p, t)
+
+class kplus_Model(lsqfit.MultiFitterModel):
+    def __init__(self, datatag, t, t_period, param_keys, n_states):
+        super(kplus_Model, self).__init__(datatag)
         # variables for fit
         self.t = np.array(t)
         self.t_period = t_period
@@ -442,17 +499,17 @@ class MesonModel(lsqfit.MultiFitterModel):
         if t is None:
             t = self.t
 
-        z = p[self.param_keys['z']]
-        E0 = np.exp(p[self.param_keys['log(E0)']])
-        dE = np.exp(p[self.param_keys['log(dE)']])
+        z = p[self.param_keys['kplus_z']]
+        E0 = p[self.param_keys['kplus_E0']]
+        dE = np.exp(p[self.param_keys['kplus_log(dE)']])
 
-        output = z[0] * np.cosh( E0 * (t - self.t_period/2.0) )
+        output = z[0] * (np.cosh(E0 *(t-self.t_period/2)))
         for j in range(1, self.n_states):
             E_j = E0 + np.sum([dE[k] for k in range(j)], axis=0)
-            output = output + z[j] * np.cosh( E_j * (t - self.t_period/2.0) )
+            output = output+ z[j] *np.cosh( E_j *(t-self.t_period/2))
+        #     output = output + z[j] * np.exp( -E_j * (self.t_period-t) )
 
         return output
-
 
     # The prior determines the variables that will be fit by multifitter --
     # each entry in the prior returned by this function will be fitted
@@ -463,7 +520,7 @@ class MesonModel(lsqfit.MultiFitterModel):
     def builddata(self, data):
         # Extract the model's fit data from data.
         # Key of data must match model's datatag!
-        return data[self.datatag][self.t]
+        return data[self.datatag]
 
 
     def fcn_effective_mass(self, p, t=None):
