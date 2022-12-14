@@ -2,16 +2,16 @@ import gvar as gv
 import h5py as h5 
 import numpy as np 
 
-def get_corr(file_h5,abbr):
+        
+def get_raw_corr(file_h5,abbr,particle):
     data = {}
+    particle_path = '/'+abbr+'/'+particle
     with h5.File(file_h5,"r") as f:
-        path = "/"+ abbr 
-        particles = f[path].keys()
-        for part in particles:
-            cfgs = np.array(f[path+"/" + part][()])
-            # print(cfgs)
-            data[part] = cfgs.real # .real for the _hp ensembles 
+        if f[particle_path].shape[3] == 1:
+            data['SS'] = f[particle_path][:, :, 0, 0].real
+            data['PS'] = f[particle_path][:, :, 1, 0].real
     return data
+        
 
 def fetch_prior(p_dict,states):
 

@@ -4,6 +4,7 @@ import gvar as gv
 import matplotlib
 import matplotlib.pyplot as plt
 import non_analytic_functions as naf
+import load_data_priors as ld
 
 # Set defaults for plots
 import matplotlib as mpl
@@ -64,11 +65,11 @@ def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
             plt.title("Best fit for $N_{states} = $%s" %(n_states['corr']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(1.4,1.5)
+        plt.ylim(0.00,0.004)
         plt.legend()
         plt.grid(True)
         plt.xlabel('$t$', fontsize = 24)
-        plt.ylabel('$M^{eff}$', fontsize = 24)
+        plt.ylabel('$GMO^{meff}$', fontsize = 24)
         fig = plt.gcf()
         plt.savefig(fig_name)
         if show_plot == True: plt.show()
@@ -108,7 +109,7 @@ def gmo_eff_mass(gmo_out=None,dt=None):
         
     if dt is None:
         dt = 1
-    return {key : 1/dt * (gmo_out[key] / np.roll(gmo_out[key], -1)) for key in list(gmo_out.keys())}
+    return {key : 1/dt * np.log(np.exp(gmo_out[key]) / np.roll(np.exp(gmo_out[key]), -1)) for key in list(gmo_out.keys())}
 
 class GMO(object):
     '''
@@ -118,12 +119,14 @@ class GMO(object):
     TODO  add M4, centroid octet mass 
 
     '''
-    def __init__(self,lam=None,sigma=None,nucleon=None,xi=None,t=None):
-        self.lam = lam
-        self.sigma = sigma
-        self.nucleon = nucleon
-        self.xi = xi  
-        self.t = t
+    def __init__(self,file=None,abbr=None):
+        # self.lam = lam
+        # self.sigma = sigma
+        # self.nucleon = nucleon
+        # self.xi = xi  
+        # self.t = t
+        self.file = '/home/gmoney/lqcd/data/c51_2pt_octet_decuplet.h5'
+        self.abbr = abbr
 
 
     @property
@@ -133,11 +136,21 @@ class GMO(object):
     def _G_gmo(self,log=None):
         result = {}
         # print(result)
-        for smr in ['PS','SS']: 
-            result[smr] = (
-                (self.lam[T] * (self.sigma[T])**1/3) * (self.nucleon[T]**(-2/3))*  (self.xi[T])**(-2/3)
-                    )
-        return gv.dataset.avg_data(result)
+        temp = {}
+        for smr in ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle='proton'): 
+            for part in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
+                temp[(part, smr)] = ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle=part)[smr]
+        temp = gv.dataset.avg_data(temp)
+        # print(temp)
+        output = {}
+        for smr in ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle='proton'):
+            output[smr] = (
+                temp[('lambda_z', smr)]
+                * np.power(temp[('sigma_p', smr)], 1/3)
+                * np.power(temp[('proton', smr)], -2/3)
+                * np.power(temp[('xi_z', smr)], -2/3)
+            )
+        return output
 
     @property 
     def gmo_violation(self):
