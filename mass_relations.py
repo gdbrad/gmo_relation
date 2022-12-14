@@ -162,20 +162,23 @@ class GMO(object):
         output += numer/denom 
         return str('gmo rln:'), numer, str('single octet:'),denom, str('gmo violation as ratio of above:'),output
 
-    def _get_meson_data(self):
+    def _get_meson_data(self,path_to_masses):
         '''
-        no direct computation of m_eta on lattice due to issues w/ disconnected diagrams; Express in terms of meson gmo relation eg. lattice data for pion and kaon parameters
+        no direct computation of m_eta on lattice due to issues w/ disconnected diagrams; Express in terms of meson gmo relation eg. lattice data for pion and kaon parameters.
         '''
+        
         temp = {}
-        for smr in ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle='proton'): 
-            for part in ['piplus', 'kplus']:
-                temp[(part, smr)] = ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle=part)[smr]
-            temp[('eta',smr)] = (
-                1/3*np.sqrt(3)
-                * np.power((np.power(temp[('kplus',smr)],2) 
-                - np.power(temp[('piplus',smr)],2)),3/2)
-            )
-        temp = gv.dataset.avg_data(temp)
+        temp = gv.load(path_to_masses)
+
+        # for smr in ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle='proton'): 
+        #     for part in ['piplus', 'kplus']:
+        #         temp[(part, smr)] = ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle=part)[smr]
+        #     temp[('eta',smr)] = (
+        #         1/3*np.sqrt(3)
+        #         * np.power((np.power(temp[('kplus',smr)],2) 
+        #         - np.power(temp[('piplus',smr)],2)),3/2)
+        #     )
+        # temp = gv.dataset.avg_data(temp)
         return temp
 
     # def plot_mq_gmo(self):
