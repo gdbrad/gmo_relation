@@ -1,8 +1,25 @@
 import gvar as gv 
 import h5py as h5 
 import numpy as np 
+import os 
 
-        
+def pickle_out(fit_out,out_path,species=None):
+    if os.path.exists(out_path):
+        pass
+    else:
+        os.mkdir(out_path)
+    fit_dump = {}
+    fit_dump['prior'] = fit_out.prior
+    fit_dump['p'] = fit_out.p
+    fit_dump['logGBF'] = fit_out.logGBF
+    fit_dump['Q'] = fit_out.Q
+    if species == 'meson':
+        return gv.dump(fit_dump,out_path+'meson_fit_params')
+    elif species == 'baryon':
+        return gv.dump(fit_dump,out_path+'fit_params')
+    elif species == 'all':
+        return gv.dump(fit_dump,out_path+'fit_params_all')
+
 def get_raw_corr(file_h5,abbr,particle):
     data = {}
     particle_path = '/'+abbr+'/'+particle

@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import non_analytic_functions as naf
 import load_data_priors as ld
+import i_o
 
 # Set defaults for plots
 import matplotlib as mpl
@@ -18,6 +19,8 @@ mpl.rcParams['ytick.direction'] = 'in'
 mpl.rcParams['xtick.labelsize'] = 12
 mpl.rcParams['ytick.labelsize'] = 12
 mpl.rcParams['text.usetex'] = True
+
+input_output = i_o.InputOutput()
 
 def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
                             t_plot_max=None, show_plot=True, show_fit=False,fig_name=None):
@@ -116,19 +119,20 @@ class GMO(object):
     save C_2pt_{baryon}(t) as an interable object of gvars
     sea-quark masses $bm_l$ in this study are:
 
-    TODO  add M4, centroid octet mass 
-
+    TODO  
+    - add M4, centroid octet mass 
+    - there is a less hacky way to initialize masses below.... 
     '''
-    def __init__(self,file=None,abbr=None):
-        # self.lam = lam
-        # self.sigma = sigma
-        # self.nucleon = nucleon
-        # self.xi = xi  
+    def __init__(self,mass_dict,file=None,abbr=None):
+        self.lam = mass_dict[abbr]['lam']
+        self.sigma = mass_dict[abbr]['sigma']
+        self.nucleon = mass_dict[abbr]['proton']
+        self.xi = mass_dict[abbr]['xi']  
+        self.piplus = mass_dict[abbr]['piplus']
+        self.kplus = mass_dict[abbr]['kplus']
         # self.t = t
         self.file = file
         self.abbr = abbr
-
-
     @property
     def G_gmo(self):
         return self._G_gmo()
@@ -162,24 +166,19 @@ class GMO(object):
         output += numer/denom 
         return str('gmo rln:'), numer, str('single octet:'),denom, str('gmo violation as ratio of above:'),output
 
-    def _get_meson_data(self,path_to_masses):
+    def _get_eta_mass(self):
         '''
         no direct computation of m_eta on lattice due to issues w/ disconnected diagrams; Express in terms of meson gmo relation eg. lattice data for pion and kaon parameters.
         '''
         
-        temp = {}
-        temp = gv.load(path_to_masses)
-
-        # for smr in ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle='proton'): 
-        #     for part in ['piplus', 'kplus']:
-        #         temp[(part, smr)] = ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle=part)[smr]
-        #     temp[('eta',smr)] = (
-        #         1/3*np.sqrt(3)
-        #         * np.power((np.power(temp[('kplus',smr)],2) 
-        #         - np.power(temp[('piplus',smr)],2)),3/2)
-        #     )
-        # temp = gv.dataset.avg_data(temp)
-        return temp
+        output = gv.gvar(
+                np.power(
+                4/3
+                * np.power(self.kplus,2) 
+                - np.power(self.piplus,2)
+                ,1/2)
+                )
+        return output
 
     # def plot_mq_gmo(self):
     #     def log_gmo(self):
@@ -199,34 +198,72 @@ class GMO_xpt():
     in order to extrpaolate to the physical point. 
     Reads in PDG values
     '''
-    def __init__(self,model,data,params,tree_level=None,loop_level=None):
-        super(GMO,self).__init__(model)
-        self.data = self._get_data(data) 
-        self.params = params
-        self.delta = False # TODO inclusion of delta res flag in xpt expressions
-        params = {}
-        if tree_level:
-            params['D'] = 0.8 #axial couplings between the octet baryons
-            params['F'] = 0.5 #axial coupling b/w octet of pseudo-Goldstone bosons,
-            params['C'] = 1.5 #axial coupling among the decuplet of baryon resonances
-        elif loop_level:
-            params['D'] = 0.6 #axial couplings between the octet baryons
-            params['F'] = 0.4 #axial coupling b/w octet of pseudo-Goldstone bosons,
-            params['C'] = 1.2 #axial coupling among the decuplet of baryon resonances
+    def __init__(self,abbr,mass_dict,data,tree_level=None,loop_level=None,delta=False):
+        self.data = data
+        self.mass_dict = mass_dict
+        self.abbr = abbr
+        self.fpi = self.data[abbr]['Fpi']
+        # self.y = {'Fpi' : gv.gvar([gv.mean(g) for g in self.data[abbr]['Fpi']], [gv.sdev(g) for g in self.data[abbr]['Fpi']])}
+        self.delta = delta #
+        # if delta:  #TODO inclusion of delta res flag in xpt expressions
 
-    
+        self.params = {}
+        if tree_level:
+            self.params['D'] = 0.8 #axial couplings between the octet baryons
+            self.params['F'] = 0.5 #axial coupling b/w octet of pseudo-Goldstone bosons,
+            self.params['C'] = 1.5 #axial coupling among the decuplet of baryon resonances
+        elif loop_level:
+            self.params['D'] = 0.6 #axial couplings between the octet baryons
+            self.params['F'] = 0.4 #axial coupling b/w octet of pseudo-Goldstone bosons,
+            self.params['C'] = 1.2 #axial coupling among the decuplet of baryon resonances
+
+        self.piplus = self.mass_dict[abbr]['piplus']
+        self.kplus  = self.mass_dict[abbr]['kplus']
+        self.eta    = self.mass_dict[abbr]['eta']
     @property
     def lo_gmo(self):
         return self._lo_gmo()
     def _lo_gmo(self):
         '''
-        the $/mu$ independence of of baryon gmo rln is protected by the meson gmo rln, so no counterterms are required in the lo xpt expression
+        the $/mu$ independence of of baryon gmo rln is protected by the meson gmo rln, so no counterterms are required in the following lo xpt expression:
         '''
-        output = 0
-        output += 1/(24*np.pi*self.fpi**2)* (
-            (2/3*self.params['D']**2 - 2*self.params['F']**2 )
-            *(4*self.data['m_k']**3 - 3*self.m_eta**3 - self.data['m_pi']**3) - self.params['C']**2/9*np.pi(4*naf.fcn_F(eps_pi=self.data['m_k']) - 3*naf.fcn_F(self.m_eta - naf.fcn_F(self.data['m_pi'])) ))
+
+        output = {}
+        # output[self.abbr] = {}
+
+        if self.delta: 
+            '''
+            /delta^expt = 293 mev 
+            '''
+            # hbar_c = input_output.get_data_phys_point(param='hbarc')
+            output = (
+                1/(24*np.pi*self.fpi**2)
+                * (
+                    (2/3*self.params['D']**2 - 2*self.params['F']**2 )
+                * (4*self.kplus**3   - 3*self.eta**3 - self.piplus**3) 
+                - (self.params['C']**2)/(9 *np.pi)
+                * (4*naf.fcn_F(self.kplus,self.delta) - 3*naf.fcn_F(self.eta,self.delta) - naf.fcn_F(self.piplus,self.delta)) 
+                )
+            )
+        else:
+            output = (
+                1/(24*np.pi*self.y['Fpi']**2)
+                * (
+                    (2/3*self.params['D']**2 - 2*self.params['F']**2 )
+                * (4*self.kplus**3   - 3*self.eta**3 - self.piplus**3) 
+                )
+            )
         return output
+
+    
+    def _lo_gmo_ratio_exp(self):
+        exp_deviation = gv.gvar(0.00761,.00007)
+        return self._lo_gmo()/exp_deviation
+
+    # def _plot_deviation(self,fig_name=None):
+
+
+        
 
     # def nlo_gmo(self):
     #     return self._nlo_gmo()
