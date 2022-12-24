@@ -85,6 +85,22 @@ class fitter(object):
 
     def _make_models_simult_fit(self):
         models = np.array([])
+        # if self.nucleon_corr is not None & self.lam_corr is not None & self.sigma_corr is not None & self.xi_corr is not None :
+        #     # if self.mutliple_smear == False:
+        #     for sink in list(self.nucleon_corr.keys()):
+        #         param_keys = {
+        #             'proton_E0'      : 'proton_E0',
+        #             'lam_E0'         : 'lam_E0',
+        #             'xi_E0'          : 'xi_E0',
+        #             'sigma_E0'       : 'sigma_E0',
+        #             'proton_log(dE)' : 'proton_log(dE)',
+        #             'proton_z'       : 'proton_z_'+sink 
+        #             # 'z_PS'      : 'z_PS',
+        #         }   
+        #         models = np.append(models,
+        #                 GMO_model(datatag="nucleon_"+sink,
+        #                 t=list(range(self.t_range['proton'][0], self.t_range['proton'][1])),
+        #                 param_keys=param_keys, n_states=self.n_states['proton']))
         if self.nucleon_corr is not None:
             # if self.mutliple_smear == False:
             for sink in list(self.nucleon_corr.keys()):
@@ -285,8 +301,7 @@ class fitter(object):
                 new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
 
         return new_prior
-
-
+        
 class proton_model(lsqfit.MultiFitterModel):
     def __init__(self, datatag, t, param_keys, n_states):
         super(proton_model, self).__init__(datatag)
