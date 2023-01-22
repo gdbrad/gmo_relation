@@ -28,6 +28,34 @@ def get_raw_corr(file_h5,abbr,particle):
             data['SS'] = f[particle_path][:, :, 0, 0].real
             data['PS'] = f[particle_path][:, :, 1, 0].real
     return data
+
+def G_gmo(file_h5,abbr,log=None):
+    result = {}
+    # print(result)
+    temp = {}
+    for smr in get_raw_corr(file_h5=file_h5, abbr=abbr,particle='proton'): 
+        for part in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
+            temp[(part, smr)] = get_raw_corr(file_h5=file_h5, abbr=abbr,particle=part)[smr]
+    temp = gv.dataset.avg_data(temp)
+    # print(temp)
+    output = {}
+    for smr in get_raw_corr(file_h5=file_h5, abbr=abbr,particle='proton'):
+        if log:
+            output[smr] = (np.log(
+                temp[('lambda_z', smr)]
+                * np.power(temp[('sigma_p', smr)], 1/3)
+                * np.power(temp[('proton', smr)], -2/3)
+                * np.power(temp[('xi_z', smr)], -2/3)
+            ))
+        else:
+            output[smr] = (
+                temp[('lambda_z', smr)]
+                * np.power(temp[('sigma_p', smr)], 1/3)
+                * np.power(temp[('proton', smr)], -2/3)
+                * np.power(temp[('xi_z', smr)], -2/3)
+            )
+
+    return output
         
 
 def fetch_prior(p_dict,states):

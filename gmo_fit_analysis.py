@@ -20,7 +20,8 @@ class fit_ensemble(object):
                  nucleon_corr_data=None,lam_corr_data=None,
                  xi_corr_data=None,sigma_corr_data=None,
                  delta_corr_data=None,
-                 piplus_corr_data = None,kplus_corr_data = None
+                 piplus_corr_data = None,kplus_corr_data = None,
+                 gmo_corr_data = None
                  ):
         #All fit ensembles (manual and automatic) must have these variables
         
@@ -53,6 +54,10 @@ class fit_ensemble(object):
             kplus_corr_gv = gv.dataset.avg_data(kplus_corr_data)
         else:
             kplus_corr_gv = None
+        if gmo_corr_data is not None:
+            gmo_corr_gv = gmo_corr_data
+        else:
+            gmo_corr_gv = None
 
         # Default to a 1 state fit
         if n_states is None:
@@ -76,6 +81,7 @@ class fit_ensemble(object):
         self.delta_corr_gv = delta_corr_gv
         self.piplus_corr_gv = piplus_corr_gv
         self.kplus_corr_gv = kplus_corr_gv
+        self.gmo_corr_gv = gmo_corr_gv
 
         # self.multiple_smear = None
         self.n_states = n_states
@@ -106,7 +112,7 @@ class fit_ensemble(object):
                                nucleon_corr=self.nucleon_corr_gv,lam_corr=self.lam_corr_gv,
                                xi_corr=self.xi_corr_gv,sigma_corr=self.sigma_corr_gv,
                                delta_corr=self.delta_corr_gv, piplus_corr=self.piplus_corr_gv,
-                               kplus_corr=self.kplus_corr_gv).get_fit()
+                               kplus_corr=self.kplus_corr_gv,gmo_ratio_corr=self.gmo_corr_gv).get_fit()
 
             self.fits[index] = temp_fit
             return temp_fit
@@ -160,15 +166,15 @@ class fit_ensemble(object):
             kplus_corr = None
             delta_corr = None
 
-        elif model_type == 'gmo':
+        elif model_type == 'simult_baryons':
             nucleon_corr = self.nucleon_corr_gv
             lam_corr = self.lam_corr_gv
             sigma_corr = self.sigma_corr_gv
             xi_corr = self.xi_corr_gv
-            delta_corr = self.delta_corr_gv
-            piplus_corr = self.piplus_corr_gv
-            kplus_corr = self.kplus_corr_gv
-            delta_corr = self.delta_corr_gv
+            delta_corr = None
+            piplus_corr= None
+            kplus_corr =None
+            delta_corr =None
 
         elif model_type == "pi":
             nucleon_corr = None
@@ -194,17 +200,31 @@ class fit_ensemble(object):
             piplus_corr = self.piplus_corr_gv
             kplus_corr = self.kplus_corr_gv
             delta_corr= None
+        elif model_type == "gmo_ratio":
+            nucleon_corr = None
+            lam_corr = None
+            sigma_corr = None
+            xi_corr = None
+            piplus_corr = None
+            kplus_corr = None
+            delta_corr= None
+            gmo_ratio_corr = self.gmo_corr_gv
+
+        elif model_type == "simult_baryons_gmo":
+            nucleon_corr = self.nucleon_corr_gv
+            lam_corr = self.lam_corr_gv
+            sigma_corr = self.sigma_corr_gv
+            xi_corr = self.xi_corr_gv
+            gmo_ratio_corr = self.gmo_corr_gv
 
 
         else:
             return None 
 
-        #print nucleon_corr_gv, axial_fh_num_gv, vector_fh_num_gv
-
         return fitter(n_states=self.n_states, prior=self.prior, t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
                       nucleon_corr=nucleon_corr,lam_corr=lam_corr,
                                xi_corr=xi_corr,sigma_corr=sigma_corr,delta_corr=delta_corr,
-                               piplus_corr=piplus_corr,kplus_corr=kplus_corr)._make_models_simult_fit()
+                               piplus_corr=piplus_corr,kplus_corr=kplus_corr,gmo_ratio_corr=gmo_ratio_corr)._make_models_simult_fit()
 
     def _generate_data_from_fit(self, t, t_start=None, t_end=None, model_type=None, n_states=None):
         if model_type is None:
@@ -350,6 +370,8 @@ class fit_ensemble(object):
             nucleon_corr_gv = self.kplus_corr_gv 
         elif model_type == 'proton':
             nucleon_corr_gv = self.nucleon_corr_gv
+        elif model_type == 'gmo_ratio':
+            nucleon_corr_gv = self.gmo_corr_gv
         
         
         
@@ -390,6 +412,7 @@ class fit_ensemble(object):
             plt.title("Best fit for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
+        plt.ylim(-0.004,0.004)
         plt.legend()
         plt.grid(True)
         plt.xlabel('$t$', fontsize = 24)

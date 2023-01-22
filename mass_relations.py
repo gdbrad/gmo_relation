@@ -22,6 +22,22 @@ mpl.rcParams['text.usetex'] = True
 
 input_output = i_o.InputOutput()
 
+def plot_centroid(centroid=None,t_plot_min=None,
+                            t_plot_max=None, show_plot=True, show_fit=False,fig_name=None):
+
+    
+
+
+    return fig 
+
+                            
+def plot_m4(m4=None,t_plot_max=None, show_plot=True, show_fit=False,fig_name=None):
+    
+
+    return fig 
+
+
+
 def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
                             t_plot_max=None, show_plot=True, show_fit=False,fig_name=None):
         if t_plot_min is None:
@@ -68,7 +84,7 @@ def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
             plt.title("Best fit for $N_{states} = $%s" %(n_states['corr']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(0.00,0.004)
+        plt.ylim(-0.001,0.005)
         plt.legend()
         plt.grid(True)
         plt.xlabel('$t$', fontsize = 24)
@@ -80,8 +96,13 @@ def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
 
         return fig
 
+def get_gmo_fit(fit_data=None):
+    return {key : fit_data[key]
+                for key in list(fit_data.keys())}
 
-def plot_log_gmo(correlators_gv, t_plot_min = None, t_plot_max = None,fig_name=None):
+def plot_log_gmo(correlators_gv,fit_data=None, t_plot_min = None, t_plot_max = None,fig_name=None,show_fit=None,n_states=None):
+    colors = np.array(['red', 'blue'])
+    # print(len(colors))
     if t_plot_min == None: t_plot_min = 0
     if t_plot_max == None: t_plot_max = correlators_gv[correlators_gv.keys()[0]].shape[0] - 1
 
@@ -91,6 +112,26 @@ def plot_log_gmo(correlators_gv, t_plot_min = None, t_plot_max = None,fig_name=N
         y_err = gv.sdev(correlators_gv[key])[x]
         
         plt.errorbar(x, y, xerr = 0.0, yerr=y_err, fmt='o', capsize=5.0,capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
+    
+    if show_fit:
+        # for j, key in enumerate(fit_data_gv.keys()):
+        t = np.linspace(t_plot_min-2, t_plot_max+2)
+        dt = (t[-1] - t[0])/(len(t) - 1)
+        # fit_data_gv = fit_data
+
+        for j, key in enumerate(fit_data.keys()):
+            fit_data_ = get_gmo_fit(fit_data)[key][1:-1]
+
+            pm = lambda x, k : gv.mean(x) + k*gv.sdev(x)
+            print(fit_data_)
+            print(t)
+            plt.plot(t[1:-1], pm(fit_data_, 0), '--')
+            #, color=colors[j%len(colors)])
+            plt.plot(t[1:-1], pm(fit_data_, 1), t[1:-1], pm(fit_data_, -1))
+            # color=colors[j%len(colors)])
+            plt.fill_between(t[1:-1], pm(fit_data_, -1), pm(fit_data_, 1))
+                            #  facecolor=colors[j%len(colors)], alpha = 0.10, rasterized=True)
+        plt.title("Best fit for $N_{states} = $%s" %n_states, fontsize = 24)
 
 
     # Label dirac/smeared data
@@ -98,10 +139,13 @@ def plot_log_gmo(correlators_gv, t_plot_min = None, t_plot_max = None,fig_name=N
     plt.grid(True)
     plt.xlabel('$t$', fontsize = 24)
     plt.ylabel('$G^{GMO}(t)$', fontsize = 24)
+    plt.ylim(0.99,1.01)
     fit = plt.gcf()
     plt.savefig(fig_name)
     # plt.show()
     return fit
+
+
 
 def gmo_eff_mass(gmo_out=None,dt=None):
     '''
@@ -148,23 +192,44 @@ class GMO(object):
         # print(temp)
         output = {}
         for smr in ld.get_raw_corr(file_h5=self.file, abbr=self.abbr,particle='proton'):
-            output[smr] = (
-                temp[('lambda_z', smr)]
-                * np.power(temp[('sigma_p', smr)], 1/3)
-                * np.power(temp[('proton', smr)], -2/3)
-                * np.power(temp[('xi_z', smr)], -2/3)
-            )
+            if log:
+
+                output[smr] = (np.log(
+                    temp[('lambda_z', smr)]
+                    * np.power(temp[('sigma_p', smr)], 1/3)
+                    * np.power(temp[('proton', smr)], -2/3)
+                    * np.power(temp[('xi_z', smr)], -2/3)
+                ))
+            else:
+                output[smr] = (
+                    temp[('lambda_z', smr)]
+                    * np.power(temp[('sigma_p', smr)], 1/3)
+                    * np.power(temp[('proton', smr)], -2/3)
+                    * np.power(temp[('xi_z', smr)], -2/3)
+                )
+
         return output
 
     @property 
     def gmo_violation(self):
         return self._gmo_violation
+
     def _gmo_violation(self):
         output = 0 
         numer = self.lam + 1/3*(self.sigma) - 2/3*self.nucleon - 2/3*self.xi 
         denom = 1/8*self.lam + 3/8*self.sigma + 1/4*self.nucleon + 1/4*self.xi
         output += numer/denom 
-        return str('gmo rln:'), numer, str('single octet:'),denom, str('gmo violation as ratio of above:'),output
+        return output
+
+    @property
+    def centroid(self):
+        return self._centroid
+
+    def _centroid(self):
+        centroid = 1/8*self.lam + 3/8*self.sigma + 1/4*self.nucleon + 1/4*self.xi
+        return centroid
+
+        
 
     def _get_eta_mass(self):
         '''
@@ -441,96 +506,6 @@ class Mass_Combinations(object):
         output = self.N + self.lam - 3*self.sigma + self.xi
         return output
     
-    @property 
-    def m5(self):
-        return self._m5() * 0.0001
-    def _m5(self):
-        output = (-2*self.N + 3*self.lam - 9*self.sigma + 8*self.xi)
-        + (2*(2*self.delta - self.xi_st - self.Omega))
-        return output
-
-    @property 
-    def m6(self):
-        return self._m6() * 0.00001
-
-    def _m6(self):
-        output = 35*(2*self.N - 3*self.lam - self.sigma + 2*self.xi)
-        - (4*(4*self.delta - 5*self.sigma_st - 2*self.xi_st + 3*self.Omega))
-        return output
-
-    @property 
-    def m7(self):
-        return self._m7() * 0.00001
-
-    def _m7(self):
-        output = 7*(2*self.N - 3*self.lam - self.sigma + 2*self.xi)
-        - (2*(4*self.delta - 5*self.sigma_st - 2*self.xi_st + 3*self.Omega))
-        return output
-
-    @property 
-    def m8(self):
-        return self._m8() * 0.00001
-
-    def _m8(self):
-        output = self.delta - 3*self.sigma_st + 3*self.xi_st - self.Omega
-        return output
-    # combinations at order 1/N_c^2
-    @property 
-    def mA(self):
-        return self._mA() *0.0001
-
-    def _mA(self):
-        output = (self.sigma_st - self.sigma) - (self.xi_st - self.xi)
-        return output 
-
-    @property 
-    def mB(self):
-        return self._mB() *0.00001
-
-    def _mB(self):
-        output = (1/3 * (self.sigma + 2*self.sigma_st)) -  self.lam - (2/3*(self.delta - self.N))
-        return output 
-    
-    @property 
-    def mC(self):
-        return self._mC() * 0.00001
-
-    def _mC(self):
-        output = (-1/4 * (2*self.N - 3*self.lam - self.sigma + 2*self.xi)) + (1/4*(self.delta - self.sigma_st - self.xi_st + self.Omega))
-        return output 
-
-    @property 
-    def mD(self):
-        return self._mD() * 0.00001
-
-    def _mD(self):
-        output = -1/2 * (self.delta - 3*self.sigma_st + 3*self.xi_st - self.Omega)
-        return output
-
-    # coefficients obtained by dividing out N_c order and scalar 
-    @property
-    def m1_c(self):
-        return self._m1_c() * 0.1
-    
-    def _m1_c(self):
-        c = self.m1 / 160*self.N_c
-        return c
-    
-    @property
-    def m2_c(self):
-        return self._m2_c() * 0.1
-    
-    def _m2_c(self):
-        c = self.m2 / (-120* 1/self.N_c)
-        return c
-
-    @property
-    def m3_c(self):
-        return self._m3_c() * 0.1
-    
-    def _m3_c(self):
-        c = self.m3 / (20* np.sqrt(3)*self.eps)
-        return c
     
     @property
     def m4_c(self):
@@ -540,73 +515,11 @@ class Mass_Combinations(object):
         c = self.m4 / (-5* np.sqrt(3)* 1/self.N_c* self.eps)
         return c
     
-    @property
-    def m5_c(self):
-        return self._m5_c() * 0.1
-
-    def _m5_c(self):
-        c = 0
-        c = self.m5 / (30* np.sqrt(3)* 1/self.N_c**2 * self.eps)
-        return c
-
-    @property
-    def m6_c(self):
-        return self._m6_c() * 0.01
-
-    def _m6_c(self):
-        c = 0
-        c = self.m6 / (126* 1/self.N_c * self.eps2)
-        return c
-
-    @property
-    def m7_c(self):
-        return self._m7_c() * 0.01
-
-    def _m7_c(self):
-        c = 0
-        c =  self.m7 / (-63 * 1/self.N_c**2 * self.eps2)
-        return c
-
-    @property
-    def m8_c(self):
-        return self._m8_c() * 0.001
-
-    def _m8_c(self):
-        c = 0
-        c = self.m8 / (9* np.sqrt(3) *  1/self.N_c**2 * self.eps3)
-        return c
-
+    \
 # scale invariant baryon mass combinations dim = mass
 
 # TODO: PLOTS WITH ERROR BARS SUPERIMPOSED FOR /EPS #
-    @property
-    def R_1(self):
-        return self._R_1()
-    
-    def _R_1(self):
-        r = self.m1 * 160/240
-        return r
-
-    @property
-    def R_2(self):
-        return self._R_2()
-    
-    def _R_2(self):
-        r = self.m2 * -80/120
-        return r
-
-    @property
-    def R_3(self):
-        return self._R_3() 
-    
-    def _R_3(self):
-        r = self.m3 * 20*np.sqrt(3)/ 78
-        return r
-
-    @property
-    def R_3_eps(self):
-        return self._R_3() / self.eps
-
+   
     @property
     def R_4(self):
         return self._R_4()
@@ -618,86 +531,6 @@ class Mass_Combinations(object):
     @property
     def R_4_eps(self):
         return self._R_4() / self.eps
-
-    @property
-    def R_5(self):
-        return self._R_5()
-    
-    def _R_5(self):
-        r = self.m5* 30*np.sqrt(3)/ 30
-        return r
-
-    @property
-    def R_5_eps(self):
-        return self._R_5() / self.eps
-
-    @property
-    def R_6(self):
-        return self._R_6()
-    
-    def _R_6(self):
-        r = self.m6* 126/ 336
-        return r
-
-    @property
-    def R_6_eps2(self):
-        return self._R_6() / self.eps2
-
-    @property
-    def R_7(self):
-        return self._R_7()
-    
-    def _R_7(self):
-        r = self.m7* -63/ 84
-        return r
-
-    @property
-    def R_7_eps2(self):
-        return self._R_7() / self.eps2
-
-    @property
-    def R_8(self):
-        return self._R_8()
-    
-    def _R_8(self):
-        r = self.m8* 9*np.sqrt(3)/ 8
-        return r
-
-    @property
-    def R_8_eps3(self):
-        return self._R_8() / self.eps3
-
-    @property
-    def R_A(self):
-        return self._R_A()
-    
-    def _R_A(self):
-        r = self.mA / 4
-        return r
-
-    @property
-    def R_B(self):
-        return self._R_B()
-    
-    def _R_B(self):
-        r = self.mB / (10/3)
-        return r
-
-    @property
-    def R_C(self):
-        return self._R_C()
-    
-    def _R_C(self):
-        r = self.mC / 3
-        return r
-
-    @property
-    def R_D(self):
-        return self._R_D()
-    
-    def _R_D(self):
-        r = self.mD / 4
-        return r
 
     
 
