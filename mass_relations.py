@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import non_analytic_functions as naf
 import load_data_priors as ld
 import i_o
+import lsqfit
 
 # Set defaults for plots
 import matplotlib as mpl
@@ -20,7 +21,7 @@ mpl.rcParams['xtick.labelsize'] = 12
 mpl.rcParams['ytick.labelsize'] = 12
 mpl.rcParams['text.usetex'] = True
 
-input_output = i_o.InputOutput()
+# input_output = i_o.InputOutput()
 
 def plot_centroid(centroid=None,t_plot_min=None,
                             t_plot_max=None, show_plot=True, show_fit=False,fig_name=None):
@@ -158,22 +159,174 @@ def gmo_eff_mass(gmo_out=None,dt=None):
         dt = 1
     return {key : 1/dt * np.log(np.exp(gmo_out[key]) / np.roll(np.exp(gmo_out[key]), -1)) for key in list(gmo_out.keys())}
 
+class gmo_fitter(object):
+
+    def __init__(self, n_states,prior, t_period,t_range,
+                 gmo_corr=None,model_type=None):
+
+        self.n_states = n_states
+        self.t_period = t_period
+        self.t_range = t_range
+        self.prior = prior
+        self.gmo_corr = gmo_corr
+        self.fit = None
+        self.model_type = model_type
+        self.prior = self._make_prior(prior)
+    
+
+    def get_fit(self):
+        if self.fit is not None:
+            return self.fit
+        else:
+            return self._make_fit()
+
+    def get_energies(self):
+
+        # Don't rerun the fit if it's already been made
+        if self.fit is not None:
+            temp_fit = self.fit
+        else:
+            temp_fit = self.get_fit()
+
+        max_n_states = np.max([self.n_states[key] for key in list(self.n_states.keys())])
+        output = gv.gvar(np.zeros(max_n_states))
+        output[0] = temp_fit.p['E0']
+        for k in range(1, max_n_states):
+            output[k] = output[0] + np.sum([(temp_fit.p['dE'][j]) for j in range(k)], axis=0)
+        return output
+
+    def _make_fit(self):
+        # Essentially: first we create a model (which is a subclass of MultiFitter)
+        # Then we make a fitter using the models
+        # Finally, we make the fit with our two sets of correlators
+
+        models = self._make_models_simult_fit()
+        data = self._make_data()
+        fitter = lsqfit.MultiFitter(models=models)
+        fit = fitter.lsqfit(data=data, prior=self.prior)
+        self.fit = fit
+        return fit
+
+    def _make_models_simult_fit(self):
+        models = np.array([])
+        if self.gmo_corr is not None:
+            # if self.mutliple_smear == False:
+            for sink in list(self.nucleon_corr.keys()):
+                param_keys = {
+                    'proton_E0'      : 'proton_E0',
+                    'xi_E0'          : 'xi_E0',
+                    'lam_E0'         : 'lam_E0',
+                    'sigma_E0'       : 'sigma_E0',
+
+                    'proton_log(dE)' : 'proton_log(dE)',
+                    'proton_z'      : 'proton_z_'+sink 
+                    # 'z_PS'      : 'z_PS',
+                }   
+                models = np.append(models,
+                        GMO_model(datatag="gmo_"+sink,
+                        t=list(range(self.t_range['gmo'][0], self.t_range['gmo'][1])),
+                        param_keys=param_keys, n_states=self.n_states['gmo']))
+        return models
+
+    # data array needs to match size of t array
+    def _make_data(self):
+        data = {}
+        if self.gmo_corr is not None:
+            for sinksrc in list(self.gmo_corr.keys()):
+                data["gmo_"+sinksrc] = self.gmo_corr[sinksrc][self.t_range['gmo'][0]:self.t_range['gmo'][1]]
+        
+        return data
+
+    def _make_prior(self,prior):
+        resized_prior = {}
+
+        max_n_states = np.max([self.n_states[key] for key in list(self.n_states.keys())])
+        for key in list(prior.keys()):
+            resized_prior[key] = prior[key][:max_n_states]
+
+        new_prior = resized_prior.copy()
+        for corr in ['sigma','lam','proton','xi',
+        'delta','piplus','kplus']:
+
+            new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
+
+        # Don't need this entry
+            new_prior.pop(corr+'_E', None)
+
+        # We force the energy to be positive by using the log-normal dist of dE
+        # let log(dE) ~ eta; then dE ~ e^eta
+            new_prior[corr+'_log(dE)'] = gv.gvar(np.zeros(len(resized_prior[corr+'_E']) - 1))
+            for j in range(len(new_prior[corr+'_log(dE)'])):
+                #excited_state_energy = p[self.mass] + np.sum([np.exp(p[self.log_dE][k]) for k in range(j-1)], axis=0)
+
+                # Notice that I've coded this s.t.
+                # the std is determined entirely by the excited state
+                # dE_mean = gv.mean(resized_prior['E'][j+1] - resized_prior['E'][j])
+                # dE_std = gv.sdev(resized_prior['E'][j+1])
+                temp = gv.gvar(resized_prior[corr+'_E'][j+1]) - gv.gvar(resized_prior[corr+'_E'][j])
+                temp2 = gv.gvar(resized_prior[corr+'_E'][j+1])
+                temp_gvar = gv.gvar(temp.mean,temp2.sdev)
+                new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
+
+        return new_prior
+class GMO_model(lsqfit.MultiFitterModel):
+    def __init__(self, datatag, t, param_keys, n_states):
+        super(GMO_model, self).__init__(datatag)
+        # variables for fit
+        self.t = np.array(t)
+        self.n_states = n_states
+        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
+        self.param_keys = param_keys
+
+    def fitfcn(self, p, t=None):
+        if t is None:
+            t = self.t
+
+        # z_PS = p[self.param_keys['z_PS']]
+        # z_SS = p[self.param_keys['z_SS']]
+        z = p[self.param_keys['lam_z']]
+        # print(self.param_keys)
+        E0 = p[self.param_keys['lam_E0']] + p[self.param_keys['sigma_E0']]/3 
+        - (2/3)*p[self.param_keys['proton_E0']] - 2/3*p[self.param_keys['xi_E0']] 
+        log_dE = p[self.param_keys['lam_log(dE)']]
+        # wf = 0
+        output = z[0] * np.exp(-E0 * t)
+        # print(output)
+        for j in range(1, self.n_states):
+            excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
+            output = output +z[j] * np.exp(-excited_state_energy * t)
+        return output
+
+    # The prior determines the variables that will be fit by multifitter --
+    # each entry in the prior returned by this function will be fitted
+    def buildprior(self, prior, mopt=None, extend=False):
+        # Extract the model's parameters from prior.
+        return prior
+
+    def builddata(self, data):
+        # Extract the model's fit data from data.
+        # Key of data must match model's datatag!
+        return data[self.datatag]
+
+
 class GMO(object):
     '''
-    save C_2pt_{baryon}(t) as an interable object of gvars
+    save C_2pt_{baryon}(t) as an iterable object of gvars
+
     sea-quark masses $bm_l$ in this study are:
 
     TODO  
     - add M4, centroid octet mass 
     - there is a less hacky way to initialize masses below.... 
     '''
-    def __init__(self,mass_dict,file=None,abbr=None):
-        self.lam = mass_dict[abbr]['lam']
-        self.sigma = mass_dict[abbr]['sigma']
-        self.nucleon = mass_dict[abbr]['proton']
-        self.xi = mass_dict[abbr]['xi']  
-        self.piplus = mass_dict[abbr]['piplus']
-        self.kplus = mass_dict[abbr]['kplus']
+    def __init__(self,mass_dict=None,file=None,abbr=None):
+        self.mass_dict = mass_dict
+        self.lam = self.mass_dict[abbr]['lam']
+        self.sigma = self.mass_dict[abbr]['sigma']
+        self.nucleon = self.mass_dict[abbr]['proton']
+        self.xi = self.mass_dict[abbr]['xi']  
+        self.piplus = self.mass_dict[abbr]['piplus']
+        self.kplus = self.mass_dict[abbr]['kplus']
         # self.t = t
         self.file = file
         self.abbr = abbr
@@ -235,7 +388,6 @@ class GMO(object):
         '''
         no direct computation of m_eta on lattice due to issues w/ disconnected diagrams; Express in terms of meson gmo relation eg. lattice data for pion and kaon parameters.
         '''
-        
         output = gv.gvar(
                 np.power(
                 4/3
