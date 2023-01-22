@@ -10,15 +10,15 @@ p_dict = {
     'snks'     :['SS','PS'],
 
    't_range' : {
-        'sigma' : [6, 16],
+        'sigma' : [6, 15],
         'xi' : [6, 15],
-        'proton' : [6, 12],
+        'proton' : [6, 15],
         'delta' : [6,15],
         'lam' : [6, 15],
         'gmo' : [2,10], 
         'pi' : [5,30],
         'kplus': [8,28],
-	    'gmo_ratio':[6,14],
+	    'gmo_ratio':[6,15],
         'simult_baryons': [6,15],
         'simult_baryons_gmo':[6,15]
     },
@@ -31,7 +31,10 @@ p_dict = {
         'gmo':2,
         'pi' : 2,
         'kplus': 2,
-	    'gmo_ratio':1
+	    'gmo_ratio':2,
+        'simult_baryons':2,
+        'simult_baryons_gmo':2
+
     },
     
     'make_plots' : False,

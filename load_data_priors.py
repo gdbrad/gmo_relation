@@ -55,6 +55,12 @@ def G_gmo(file_h5,abbr,log=None):
                 * np.power(temp[('xi_z', smr)], -2/3)
             )
 
+    
+
+    return output
+
+def clean(serie):
+    output = serie[(np.isnan(serie) == False) & (np.isinf(serie) == False)]
     return output
         
 

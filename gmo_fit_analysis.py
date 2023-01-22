@@ -55,7 +55,7 @@ class fit_ensemble(object):
         else:
             kplus_corr_gv = None
         if gmo_corr_data is not None:
-            gmo_corr_gv = gmo_corr_data
+            gmo_corr_gv =gmo_corr_data
         else:
             gmo_corr_gv = None
 
@@ -166,7 +166,7 @@ class fit_ensemble(object):
             kplus_corr = None
             delta_corr = None
 
-        elif model_type == 'simult_baryons':
+        elif model_type == "simult_baryons":
             nucleon_corr = self.nucleon_corr_gv
             lam_corr = self.lam_corr_gv
             sigma_corr = self.sigma_corr_gv
@@ -216,6 +216,10 @@ class fit_ensemble(object):
             sigma_corr = self.sigma_corr_gv
             xi_corr = self.xi_corr_gv
             gmo_ratio_corr = self.gmo_corr_gv
+            delta_corr= None
+            piplus_corr = None
+            kplus_corr = None
+
 
 
         else:
@@ -247,6 +251,28 @@ class fit_ensemble(object):
         # datatag[-3:] converts, eg, 'nucleon_dir' -> 'dir'
         output = {model.datatag : model.fitfcn(p=fit.p, t=t) for model in models}
         return output
+
+    def plot_delta_gmo(self,correlators_gv=None, t_plot_min = None, t_plot_max = None,fig_name=None):
+        if t_plot_min == None: t_plot_min = 0
+        if t_plot_max == None: t_plot_max = correlators_gv[correlators_gv.keys()[0]].shape[0] - 1
+
+        x = range(t_plot_min, t_plot_max)
+        for j, key in enumerate(sorted(correlators_gv.keys())):
+            y = gv.mean(correlators_gv[key])[x]
+            y_err = gv.sdev(correlators_gv[key])[x]
+            
+            plt.errorbar(x, y, xerr = 0.0, yerr=y_err, fmt='o', capsize=5.0,capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
+
+
+        # Label dirac/smeared data
+        plt.legend()
+        plt.grid(True)
+        plt.xlabel('$t$', fontsize = 24)
+        plt.ylabel('$G^{GMO}(t)$', fontsize = 24)
+        fit = plt.gcf()
+        plt.savefig(fig_name)
+        # plt.show()
+        return fit
 
     def get_nucleon_effective_mass(self, nucleon_corr_gv=None, dt=None):
         if nucleon_corr_gv is None:

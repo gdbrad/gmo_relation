@@ -104,25 +104,25 @@ class fitter(object):
             for sink in list(self.gmo_ratio_corr.keys()):
 
                 param_keys = {
-                    'gmo_E' : 'gmo_E',
+                    'gmo_E0'    : 'gmo_E0',
                     # 'a'   : 'a',
-                    'sigma_E0' : 'sigma_E0',
-                    'xi_E0' : 'xi_E0',
-                    'lam_E0' : 'lam_E0',
+                    'sigma_E0'  : 'sigma_E0',
+                    'xi_E0'     : 'xi_E0',
+                    'lam_E0'    : 'lam_E0',
                     'proton_E0' : 'proton_E0',
                     'p_log(dE)' : 'proton_log(dE)',
                     'x_log(dE)' : 'xi_log(dE)',
                     's_log(dE)' : 'sigma_log(dE)',
                     'l_log(dE)' : 'lam_log(dE)',
-                    'proton_z'      : 'proton_z_'+sink,
-                    'lam_z'      : 'lam_z_'+sink,
+                    'proton_z'  : 'proton_z_'+sink,
+                    'lam_z'     : 'lam_z_'+sink,
                     'xi_z'      : 'xi_z_'+sink,
-                    'sigma_z'      : 'sigma_z_'+sink 
+                    'sigma_z'   : 'sigma_z_'+sink 
                                     }
                 models = np.append(models,
                         gmo_model(datatag="gmo_ratio_"+sink,
-                        t=list(range(self.t_range['gmo'][0], self.t_range['gmo'][1])),
-                        param_keys=param_keys, n_states=self.n_states['gmo']))
+                        t=list(range(self.t_range['gmo_ratio'][0], self.t_range['gmo_ratio'][1])),
+                        param_keys=param_keys, n_states=self.n_states['gmo_ratio']))
         if self.nucleon_corr is not None:
             # if self.mutliple_smear == False:
             for sink in list(self.nucleon_corr.keys()):
@@ -234,7 +234,7 @@ class fitter(object):
 
         if self.gmo_ratio_corr is not None:
             for sinksrc in list(self.gmo_ratio_corr.keys()):
-                data["gmo_ratio_"+sinksrc] = self.gmo_ratio_corr[sinksrc][self.t_range['gmo'][0]:self.t_range['gmo'][1]]
+                data["gmo_ratio_"+sinksrc] = self.gmo_ratio_corr[sinksrc][self.t_range['proton'][0]:self.t_range['proton'][1]]
         if self.nucleon_corr is not None:
             for sinksrc in list(self.nucleon_corr.keys()):
                 data["nucleon_"+sinksrc] = self.nucleon_corr[sinksrc][self.t_range['proton'][0]:self.t_range['proton'][1]]
@@ -347,41 +347,46 @@ class gmo_model(lsqfit.MultiFitterModel):
         if t is None:
             t = self.t
         
-        # proton_E0 = p[self.param_keys['proton_E0']]
-        # sigma_E0 = p[self.param_keys['sigma_E0']]
-        # xi_E0 =  p[self.param_keys['xi_E0']]
-        # lam_E0  = p[self.param_keys['lam_E0']]
-        gmo_E0 = p[self.param_keys['gmo_E']]
-        # proton_log_dE = p[self.param_keys['p_log(dE)']]
-        # sigma_log_dE = p[self.param_keys['s_log(dE)']]
-        # xi_log_dE = p[self.param_keys['x_log(dE)']]
-        # lam_log_dE = p[self.param_keys['l_log(dE)']]
-        # z_p = p[self.param_keys['proton_z']]
-        # z_s = p[self.param_keys['sigma_z']]
-        # z_x = p[self.param_keys['xi_z']]
-        # z_l = p[self.param_keys['lam_z']]
-        # a = self.param_keys['a']
+        proton_E0 = p[self.param_keys['proton_E0']]
+        sigma_E0 = p[self.param_keys['sigma_E0']]
+        xi_E0 =  p[self.param_keys['xi_E0']]
+        lam_E0  = p[self.param_keys['lam_E0']]
+        gmo_E0 = p[self.param_keys['gmo_E0']]
+        proton_log_dE = p[self.param_keys['p_log(dE)']]
+        sigma_log_dE = p[self.param_keys['s_log(dE)']]
+        xi_log_dE = p[self.param_keys['x_log(dE)']]
+        lam_log_dE = p[self.param_keys['l_log(dE)']]
+        z_p = p[self.param_keys['proton_z']]
+        z_s = p[self.param_keys['sigma_z']]
+        z_x = p[self.param_keys['xi_z']]
+        z_l = p[self.param_keys['lam_z']]
 
-        output = np.exp(-gmo_E0*t) 
-        #+ 1/3*sigma_E0 - 2/3*proton_E0 - 2/3*xi_E0)*t/a,-1)
-        # # dev = 1/8*lam_E0 + 3/8*sigma_E0 + 1/4*proton_E0 + 1/4*xi_E0
-        # output_p = z_p[0] * np.exp(-proton_E0 * t)
-        # output_s = z_s[0] * np.exp(-sigma_E0 * t)
-        # output_x = z_x[0] * np.exp(-xi_E0 * t)
-        # output_l = z_l[0] * np.exp(-lam_E0 * t)
+        # print(a)
+        # gmo = lam_E0 + 1/3*sigma_E0 - 2/3*proton_E0 - 2/3*xi_E0
+        # delta_gmo = np.exp(-gmo_E0*t)
+        # output = a * delta_gmo 
+        # print(delta_gmo)
+        
+        output_p = np.power(z_p[0],-2/3) * np.exp(2/3*proton_E0 * t)
+        output_s = np.power(z_s[0],1/3) * np.exp(-1/3*sigma_E0 * t)
+        output_x = np.power(z_x[0],-2/3) * np.exp(2/3*xi_E0 * t)
+        output_l = z_l[0] * np.exp(-lam_E0 * t)
+        output = output_l * output_s*output_p * output_x
+        
 
-        # for j in range(1, self.n_states):
-        #     p_esc = proton_E0 + np.sum([np.exp(proton_log_dE[k]) for k in range(j)], axis=0)
-        #     s_esc = sigma_E0 + np.sum([np.exp(sigma_log_dE[k]) for k in range(j)], axis=0)
-        #     x_esc = xi_E0 + np.sum([np.exp(xi_log_dE[k]) for k in range(j)], axis=0)
-        #     l_esc = lam_E0 + np.sum([np.exp(lam_log_dE[k]) for k in range(j)], axis=0)
-        #     output_p = output_p +z_p[j] * np.exp(-p_esc * t)
-        #     output_s = output_s +z_s[j] * np.exp(-s_esc * t)
-        #     output_x = output_x +z_x[j] * np.exp(-x_esc * t)
-        #     output_l = output_l +z_l[j] * np.exp(-l_esc * t)
+        for j in range(1, self.n_states):
+            p_esc = np.power(z_p[j] + np.sum([np.exp(proton_log_dE[k]) for k in range(j)], axis=0),-2/3)
+            s_esc = np.power(z_s[j] + np.sum([np.exp(sigma_log_dE[k]) for k in range(j)], axis=0),1/3)
+            x_esc = np.power(z_x[j] + np.sum([np.exp(xi_log_dE[k]) for k in range(j)], axis=0),-2/3)
+            l_esc =  np.power(z_l[j] + np.sum([np.exp(lam_log_dE[k]) for k in range(j)], axis=0),1)
+            esc = (p_esc * s_esc * x_esc * l_esc)
+            output = output * esc
 
-        # output = (output_l * np.power(output_s,1/3)) / (np.power(output_p,2/3) * np.power(output_x,2/3))
+
+
         # print(output)
+        # output+= 
+        # output *= p_esc * s_esc * x_esc * l_esc
         # output = z[0] * np.exp(-E0 * t)
         # # print(output)
         # for j in range(1, self.n_states):
