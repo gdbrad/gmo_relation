@@ -375,12 +375,17 @@ class gmo_model(lsqfit.MultiFitterModel):
         
 
         for j in range(1, self.n_states):
-            p_esc = np.power(z_p[j] + np.sum([np.exp(proton_log_dE[k]) for k in range(j)], axis=0),-2/3)
-            s_esc = np.power(z_s[j] + np.sum([np.exp(sigma_log_dE[k]) for k in range(j)], axis=0),1/3)
-            x_esc = np.power(z_x[j] + np.sum([np.exp(xi_log_dE[k]) for k in range(j)], axis=0),-2/3)
-            l_esc =  np.power(z_l[j] + np.sum([np.exp(lam_log_dE[k]) for k in range(j)], axis=0),1)
-            esc = (p_esc * s_esc * x_esc * l_esc)
-            output = output * esc
+            p_esc    = proton_E0 + np.sum([np.exp(proton_log_dE[k]) for k in range(j)], axis=0)
+            output_p = output_p + z_p[j] * np.exp(-p_esc*t)
+            s_esc    = sigma_E0 + np.sum([np.exp(sigma_log_dE[k]) for k in range(j)], axis=0)
+            output_s = output_s + z_s[j] * np.exp(-s_esc*t)
+            x_esc    = xi_E0 + np.sum([np.exp(xi_log_dE[k]) for k in range(j)], axis=0)
+            output_x = output_x + z_x[j] * np.exp(-x_esc*t)
+            l_esc    =  lam_E0 + np.sum([np.exp(lam_log_dE[k]) for k in range(j)], axis=0)
+            output_l = output_l + z_l[j] * np.exp(-l_esc*t)
+
+        esc = np.power(output_x,-2/3) * np.power(output_s,1/3) * output_l * np.power(output_p,-2/3)
+        # output = esc
 
 
 
@@ -391,7 +396,7 @@ class gmo_model(lsqfit.MultiFitterModel):
         # # print(output)
         # for j in range(1, self.n_states):
         # #     output = output + np.power(np.exp((l_esc + (1/3*s_esc) - (2/3*p_esc) - (2/3*x_esc))) * t,-1)
-        return output
+        return esc
 
     # The prior determines the variables that will be fit by multifitter --
     # each entry in the prior returned by this function will be fitted

@@ -165,6 +165,7 @@ class fit_ensemble(object):
             piplus_corr = None
             kplus_corr = None
             delta_corr = None
+            gmo_ratio_corr = None
 
         elif model_type == "simult_baryons":
             nucleon_corr = self.nucleon_corr_gv
@@ -252,23 +253,74 @@ class fit_ensemble(object):
         output = {model.datatag : model.fitfcn(p=fit.p, t=t) for model in models}
         return output
 
-    def plot_delta_gmo(self,correlators_gv=None, t_plot_min = None, t_plot_max = None,fig_name=None):
+    def get_gmo_effective(self, gmo_ratio=None, t=None, dt=None):
+        if gmo_ratio is None:
+            gmo_ratio = self.gmo_corr_gv
+
+        # If still empty, return nothing
+        if gmo_ratio is None:
+            return None
+
+        if dt is None:
+            dt = 1
+        return {key : 1/dt * np.log(gmo_ratio[key] / np.roll(gmo_ratio[key], -1))
+                for key in list(gmo_ratio.keys())}
+    def plot_delta_gmo(self,correlators_gv=None,model_type=None, t_plot_min = None, t_plot_max = None,fig_name=None,show_fit=None):
         if t_plot_min == None: t_plot_min = 0
-        if t_plot_max == None: t_plot_max = correlators_gv[correlators_gv.keys()[0]].shape[0] - 1
+        # if t_plot_max == None: t_plot_max = correlators_gv[correlators_gv.keys()[0]].shape[0] - 1
+        colors = np.array(['red', 'blue', 'green','magenta'])
 
         x = range(t_plot_min, t_plot_max)
+        t = {}
+
+        y = {}
+        y_err = {}
         for j, key in enumerate(sorted(correlators_gv.keys())):
-            y = gv.mean(correlators_gv[key])[x]
-            y_err = gv.sdev(correlators_gv[key])[x]
+            t[key] = np.arange(t_plot_min, t_plot_max)
+
+            pm = lambda x, k : gv.mean(x) + k*gv.sdev(x)
+            y[key] = gv.mean(correlators_gv[key])[x]
+            y_err[key] = gv.sdev(correlators_gv[key])[x]
             
-            plt.errorbar(x, y, xerr = 0.0, yerr=y_err, fmt='o', capsize=5.0,capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
+            plt.errorbar(x=t[key], y=y[key], xerr = 0.0, yerr=y_err[key], fmt='o', capsize=5.0,capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
 
 
-        # Label dirac/smeared data
-        plt.legend()
-        plt.grid(True)
+            # Label dirac/smeared data
+            plt.legend()
+            plt.grid(True)
+            plt.xlabel('$t$', fontsize = 24)
+            plt.ylabel('$G^{GMO}(t)$', fontsize = 24)
+
+        if show_fit:
+            t = np.linspace(t_plot_min-2, t_plot_max+2)
+            dt = (t[-1] - t[0])/(len(t) - 1)
+            fit_data_gv = self._generate_data_from_fit(model_type=model_type, t=t)
+            gmo_fit_data = {}
+            gmo_fit_data['SS'] = fit_data_gv['gmo_ratio_SS']
+            gmo_fit_data['PS'] = fit_data_gv['gmo_ratio_PS']
+
+            t = t[1:-1]
+
+            for j, key in enumerate(sorted(gmo_fit_data.keys())):
+                plt.subplot(int(str(21)+str(j+1)))
+                if j == 0:
+                    plt.title("Best fit for $N_{states} = $%s" %(self.n_states['simult_baryons_gmo']), fontsize = 24)
+
+                A_eff_fit = gmo_fit_data[key][2:-2]
+                pm = lambda x, k : gv.mean(x) + k*gv.sdev(x)
+
+
+                plt.plot(t[1:-1], pm(A_eff_fit, 0), '--', color=colors[j%len(colors)])
+                plt.plot(t[1:-1], pm(A_eff_fit, 1), t[1:-1], pm(A_eff_fit, -1), color=colors[j%len(colors)])
+                plt.fill_between(t[1:-1], pm(A_eff_fit, -1), pm(A_eff_fit, 1),
+                                 facecolor=colors[j%len(colors)], alpha = 0.10, rasterized=True)
+                plt.xlim(t_plot_min-0.5, t_plot_max-.5)
+
         plt.xlabel('$t$', fontsize = 24)
-        plt.ylabel('$G^{GMO}(t)$', fontsize = 24)
+        # fig = plt.gcf()
+        # plt.savefig('z_test2')
+        # if show_plot == True: plt.show()
+        # else: plt.close()
         fit = plt.gcf()
         plt.savefig(fig_name)
         # plt.show()
@@ -438,7 +490,7 @@ class fit_ensemble(object):
             plt.title("Best fit for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(-0.004,0.004)
+        plt.ylim(0.5,0.7)
         plt.legend()
         plt.grid(True)
         plt.xlabel('$t$', fontsize = 24)
