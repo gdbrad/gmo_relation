@@ -17,7 +17,7 @@ def pickle_out(fit_out,out_path,species=None):
         return gv.dump(fit_dump,out_path+'meson_fit_params')
     elif species == 'baryon':
         return gv.dump(fit_dump,out_path+'fit_params')
-    elif species == 'all':
+    elif species == 'baryon_w_gmo':
         return gv.dump(fit_dump,out_path+'fit_params_all')
 
 def get_raw_corr(file_h5,abbr,particle):
@@ -54,16 +54,7 @@ def G_gmo(file_h5,abbr,log=None):
                 * np.power(temp[('proton', smr)], -2/3)
                 * np.power(temp[('xi_z', smr)], -2/3)
             )
-
-    
-
     return output
-
-def clean(serie):
-    output = serie[(np.isnan(serie) == False) & (np.isinf(serie) == False)]
-    return output
-        
-
 def fetch_prior(p_dict,states):
 
     prior_nucl = {}

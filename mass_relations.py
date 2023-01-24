@@ -39,7 +39,7 @@ mpl.rcParams['text.usetex'] = True
 
 
 
-def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
+def plot_effective_mass(gmo_eff_mass=None, fit_data=None, t_plot_min=None,
                             t_plot_max=None, show_plot=True, show_fit=False,fig_name=None):
         if t_plot_min is None:
             t_plot_min = t_min
@@ -72,7 +72,7 @@ def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
         if show_fit:
             t = np.linspace(t_plot_min-2, t_plot_max+2)
             dt = (t[-1] - t[0])/(len(t) - 1)
-            fit_data_gv = _generate_data_from_fit(model_type="corr", t=t)
+            fit_data_gv = _generate_data_from_fit(model_type="gmo", t=t)
 
             for j, key in enumerate(fit_data_gv.keys()):
                 eff_mass_fit = get_nucleon_effective_mass(fit_data_gv, dt)[key][1:-1]
@@ -85,7 +85,7 @@ def plot_effective_mass(gmo_eff_mass=None, t_plot_min=None,
             plt.title("Best fit for $N_{states} = $%s" %(n_states['corr']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(0.00,0.004)
+        plt.ylim(0,0.001)
         plt.legend()
         plt.grid(True)
         plt.xlabel('$t$', fontsize = 24)
@@ -291,15 +291,21 @@ class GMO(object):
     - add M4, centroid octet mass 
     - there is a less hacky way to initialize masses below.... 
     '''
-    def __init__(self,mass_dict=None,file=None,abbr=None):
+    def __init__(self,mass_dict=None,file=None,abbr=None,baryons=None):
         self.mass_dict = mass_dict
         self.lam = self.mass_dict[abbr]['lam']
         self.sigma = self.mass_dict[abbr]['sigma']
         self.nucleon = self.mass_dict[abbr]['proton']
-        self.xi = self.mass_dict[abbr]['xi']  
-        self.piplus = self.mass_dict[abbr]['piplus']
-        self.kplus = self.mass_dict[abbr]['kplus']
-        # self.t = t
+        self.xi = self.mass_dict[abbr]['xi']
+        if baryons:
+            self.piplus = None
+            self.kplus = None
+        # # 
+        else:
+            self.piplus = self.mass_dict[abbr]['piplus']
+            self.kplus = self.mass_dict[abbr]['kplus']
+        # # 
+        # # self.t = t
         self.file = file
         self.abbr = abbr
     @property
@@ -325,15 +331,48 @@ class GMO(object):
             )
         return output
 
+    @property
+    def gmo_rln(self):
+        return self._gmo_rln
+    
+    def _gmo_rln(self,mev=None):
+        numer = {}
+        numer[self.abbr] = self.lam + 1/3*(self.sigma) - 2/3*self.nucleon - 2/3*self.xi 
+        if mev:
+            numer[self.abbr] = 197.3269804 * numer[self.abbr]
+        return numer 
+
     @property 
     def gmo_violation(self):
         return self._gmo_violation
     def _gmo_violation(self):
-        output = 0 
+        output = {}
         numer = self.lam + 1/3*(self.sigma) - 2/3*self.nucleon - 2/3*self.xi 
         denom = 1/8*self.lam + 3/8*self.sigma + 1/4*self.nucleon + 1/4*self.xi
-        output += numer/denom 
-        return str('gmo rln:'), numer, str('single octet:'),denom, str('gmo violation as ratio of above:'),output
+        output[self.abbr] = numer/denom 
+        return output
+    @property 
+    def m_4(self):
+        return self._m4
+
+    def _m4(self,mev=None):
+        output = {}
+        output[self.abbr] = self.nucleon + self.lam - 3*self.sigma + self.xi
+        if mev:
+            output[self.abbr] = 197.3269804 * output[self.abbr] # MeV-fm
+            # output = output 
+        return output
+
+    @property
+    def centroid(self):
+        return self._centroid
+
+    def _centroid(self):
+        output = {}
+        output[self.abbr] = 1/8*self.lam + 3/8*self.sigma + 1/4*self.nucleon + 1/4*self.xi
+        return output
+
+    
 
     def _get_eta_mass(self):
         '''
@@ -454,33 +493,11 @@ class Mass_Combinations(object):
         self.sigma = sigma
         self.xi = xi
         self.delta = delta
-        self.sigma_st = sigma_st
-        self.xi_st = xi_st
-        self.Omega = omega #mev or gev
+        
         self.N_c = 3
         self.p = p
-        self.eps = (p['m_k']**2 - p['m_pi']**2) / (p['lam_chi']**2) *1e-6 # since lam_chi ~ 1 gev
-        self.eps2 = self.eps**2
-        self.eps3 = self.eps**3
         # isolate coefficient
         # superscript: {flavor su(3) representation, spin su(2) representation}  
-        self.c = {}
-        # 8 isospin multiplets of ground state baryons 
-        self.c['c^{1,0}_0'] = self.m1_c
-        self.c['c^{1,0}_2'] = self.m2_c   
-        self.c['c^{8,0}_1'] = self.m3_c
-        self.c['c^{8,0}_2']  = self.m4_c
-        self.c['c^{8,0}_3'] = self.m5_c   
-        self.c['c^{27,0}_2'] = self.m6_c   
-        self.c['c^{27,0}_3'] = self.m7_c    
-        self.c['c^{64,0}_3'] = self.m8_c
-
-        # coeffs in jenkins paper not in 1/n_c paper:
-        #    
-        # self.c['c^{1,0}_1']  = self.mA      
-        # self.c['c^{8,0}_35'] = self.mB
-        # self.c['c^{8,0}_405'] = self.mC 
-        # self.c['c^{27,0}_405'] = self.mD 
 
         #mass combinations given by coefficient value in table
         self.M = {}

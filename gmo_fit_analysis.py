@@ -12,6 +12,7 @@ import matplotlib.colors as colors
 from matplotlib.backends.backend_pdf import PdfPages
 import cmath
 from gmo_fitter import fitter
+import mass_relations as ma 
 
 
 class fit_ensemble(object):
@@ -176,6 +177,7 @@ class fit_ensemble(object):
             piplus_corr= None
             kplus_corr =None
             delta_corr =None
+            gmo_ratio_corr = None
 
         elif model_type == "pi":
             nucleon_corr = None
@@ -265,31 +267,44 @@ class fit_ensemble(object):
             dt = 1
         return {key : 1/dt * np.log(gmo_ratio[key] / np.roll(gmo_ratio[key], -1))
                 for key in list(gmo_ratio.keys())}
+
+    # def plot_m4(self,correlators_gv=None,model_type=None, t_plot_min = None, t_plot_max = None,fig_name=None,show_fit=None):
+
+
+
+
     def plot_delta_gmo(self,correlators_gv=None,model_type=None, t_plot_min = None, t_plot_max = None,fig_name=None,show_fit=None):
         if t_plot_min == None: t_plot_min = 0
         # if t_plot_max == None: t_plot_max = correlators_gv[correlators_gv.keys()[0]].shape[0] - 1
         colors = np.array(['red', 'blue', 'green','magenta'])
 
-        x = range(t_plot_min, t_plot_max)
-        t = {}
+        x = np.arange(t_plot_min,t_plot_max)
+        # t = {}
 
         y = {}
         y_err = {}
+        lower_quantile = np.inf
+        upper_quantile = -np.inf
         for j, key in enumerate(sorted(correlators_gv.keys())):
-            t[key] = np.arange(t_plot_min, t_plot_max)
+            # t[key] = np.arange(t_plot_min, t_plot_max)
 
             pm = lambda x, k : gv.mean(x) + k*gv.sdev(x)
             y[key] = gv.mean(correlators_gv[key])[x]
             y_err[key] = gv.sdev(correlators_gv[key])[x]
+
+            lower_quantile = np.min([np.nanpercentile(y[key], 25), lower_quantile])
+            upper_quantile = np.max([np.nanpercentile(y[key], 75), upper_quantile])
             
-            plt.errorbar(x=t[key], y=y[key], xerr = 0.0, yerr=y_err[key], fmt='o', capsize=5.0,capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
-
-
+            plt.errorbar(x=x, y=y[key], xerr = 0.0, yerr=y_err[key], fmt='o', capsize=5.0,
+            color = colors[j%len(colors)],capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
+        delta_quantile = upper_quantile - lower_quantile
+        plt.ylim(lower_quantile - 0.5*delta_quantile,
+                 upper_quantile + 0.5*delta_quantile)
             # Label dirac/smeared data
-            plt.legend()
-            plt.grid(True)
-            plt.xlabel('$t$', fontsize = 24)
-            plt.ylabel('$G^{GMO}(t)$', fontsize = 24)
+            # plt.legend()
+            # plt.grid(True)
+            # plt.xlabel('$t$', fontsize = 24)
+            # plt.ylabel('$G^{GMO}(t)$', fontsize = 24)
 
         if show_fit:
             t = np.linspace(t_plot_min-2, t_plot_max+2)
@@ -302,29 +317,40 @@ class fit_ensemble(object):
             t = t[1:-1]
 
             for j, key in enumerate(sorted(gmo_fit_data.keys())):
-                plt.subplot(int(str(21)+str(j+1)))
-                if j == 0:
-                    plt.title("Best fit for $N_{states} = $%s" %(self.n_states['simult_baryons_gmo']), fontsize = 24)
-
                 A_eff_fit = gmo_fit_data[key][2:-2]
+                # print(A_eff_fit)
                 pm = lambda x, k : gv.mean(x) + k*gv.sdev(x)
-
-
                 plt.plot(t[1:-1], pm(A_eff_fit, 0), '--', color=colors[j%len(colors)])
                 plt.plot(t[1:-1], pm(A_eff_fit, 1), t[1:-1], pm(A_eff_fit, -1), color=colors[j%len(colors)])
                 plt.fill_between(t[1:-1], pm(A_eff_fit, -1), pm(A_eff_fit, 1),
                                  facecolor=colors[j%len(colors)], alpha = 0.10, rasterized=True)
-                plt.xlim(t_plot_min-0.5, t_plot_max-.5)
+            plt.title("Best fit for $N_{states} = $%s" %(self.n_states['simult_baryons_gmo']), fontsize = 24)
+        
+        plt.xlim(t_plot_min-0.5, t_plot_max-.5)
+        plt.ylim(0.5,0.7)
 
         plt.xlabel('$t$', fontsize = 24)
+        plt.ylabel('$G_{GMO}(t)$')
+        plt.grid(True)
+        plt.legend()
         # fig = plt.gcf()
         # plt.savefig('z_test2')
         # if show_plot == True: plt.show()
         # else: plt.close()
-        fit = plt.gcf()
+        fig = plt.gcf()
         plt.savefig(fig_name)
         # plt.show()
-        return fit
+        return fig
+
+    def get_m_4(self,t=None):
+        # output = {}
+        if t is None:
+            t = {key : np.arange(len(self.nucleon_corr_gv[key])) for key in list(self.nucleon_corr_gv.keys())}
+        output= {key: self.nucleon_corr_gv[key] + self.lam_corr_gv[key] - 3*self.sigma_corr_gv[key] + self.xi_corr_gv[key]*t[key] for key in list(self.nucleon_corr_gv.keys())}
+        # if mev:
+            # output[self.abbr] = 197.3269804 * output[self.abbr] # MeV-fm
+            # output = output 
+        return output
 
     def get_nucleon_effective_mass(self, nucleon_corr_gv=None, dt=None):
         if nucleon_corr_gv is None:
@@ -423,37 +449,45 @@ class fit_ensemble(object):
 
         return fig
 
-    def plot_effective_mass(self, nucleon_corr_gv=None, t_plot_min=None, model_type=None,
+    def plot_effective_mass(self, t_plot_min=None, model_type=None,
                             t_plot_max=None, show_plot=True, show_fit=True,fig_name=None):
         if t_plot_min is None:
             t_plot_min = self.t_min
         if t_plot_max is None:
             t_plot_max = self.t_max
-
-        colors = np.array(['red', 'blue', 'green','magenta'])
+        markers = ["^", "v"]
+        colors = np.array(['red', 'blue', 'green','magenta','yellow','purple','cyan','teal'])
         t = np.arange(t_plot_min, t_plot_max)
         if model_type == None:
             raise TypeError(model_type,'you need to supply a correlator model in order to generate an eff mass plot for that correlator')
-        elif model_type == 'delta':
-            nucleon_corr_gv = self.delta_corr_gv
-        elif model_type == 'xi':
-            nucleon_corr_gv = self.xi_corr_gv
-        elif model_type == 'lam':
-            nucleon_corr_gv = self.lam_corr_gv
-        elif model_type == 'sigma':
-            nucleon_corr_gv = self.sigma_corr_gv
-        elif model_type == 'pi':
-            nucleon_corr_gv = self.piplus_corr_gv
-        elif model_type == 'kplus':
-            nucleon_corr_gv = self.kplus_corr_gv 
-        elif model_type == 'proton':
+        elif model_type == 'simult_baryons':
             nucleon_corr_gv = self.nucleon_corr_gv
+            xi_corr_gv      = self.xi_corr_gv
+            lam_corr_gv     = self.lam_corr_gv
+            sigma_corr_gv   = self.sigma_corr_gv
+
+        # elif model_type == 'delta':
+        #     nucleon_corr_gv = self.delta_corr_gv
+        # elif model_type == 'xi':
+        #     nucleon_corr_gv = self.xi_corr_gv
+        # elif model_type == 'lam':
+        #     nucleon_corr_gv = self.lam_corr_gv
+        # elif model_type == 'sigma':
+        #     nucleon_corr_gv = self.sigma_corr_gv
+        # elif model_type == 'pi':
+        #     nucleon_corr_gv = self.piplus_corr_gv
+        # elif model_type == 'kplus':
+        #     nucleon_corr_gv = self.kplus_corr_gv 
+        # elif model_type == 'proton':
+        #     nucleon_corr_gv = self.nucleon_corr_gv
         elif model_type == 'gmo_ratio':
             nucleon_corr_gv = self.gmo_corr_gv
         
-        
-        
-        effective_mass = self.get_nucleon_effective_mass(nucleon_corr_gv)
+        effective_mass = {}
+        effective_mass['proton'] = self.get_nucleon_effective_mass(nucleon_corr_gv)
+        effective_mass['xi'] = self.get_nucleon_effective_mass(xi_corr_gv)
+        effective_mass['sigma'] = self.get_nucleon_effective_mass(sigma_corr_gv)
+        effective_mass['lam'] = self.get_nucleon_effective_mass(lam_corr_gv)
 
         if effective_mass is None:
             return None
@@ -462,17 +496,20 @@ class fit_ensemble(object):
         y_err = {}
         lower_quantile = np.inf
         upper_quantile = -np.inf
-        for j, key in enumerate(effective_mass.keys()):
-            y[key] = gv.mean(effective_mass[key])[t]
-            y_err[key] = gv.sdev(effective_mass[key])[t]
-            lower_quantile = np.min([np.nanpercentile(y[key], 25), lower_quantile])
-            upper_quantile = np.max([np.nanpercentile(y[key], 75), upper_quantile])
+        for i,baryon in enumerate(effective_mass.keys()):
+            y[baryon] = {}
+            y_err[baryon] = {}
+            for j, key in enumerate(effective_mass[baryon].keys()):
+                y[baryon][key] = gv.mean(effective_mass[baryon][key])[t]
+                y_err[baryon][key] = gv.sdev(effective_mass[baryon][key])[t]
+                lower_quantile = np.min([np.nanpercentile(y[baryon][key], 25), lower_quantile])
+                upper_quantile = np.max([np.nanpercentile(y[baryon][key], 75), upper_quantile])
 
-            plt.errorbar(x=t, y=y[key], xerr=0.0, yerr=y_err[key], fmt='o', capsize=5.0,
-                color = colors[j%len(colors)], capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
-        delta_quantile = upper_quantile - lower_quantile
-        plt.ylim(lower_quantile - 0.5*delta_quantile,
-                 upper_quantile + 0.5*delta_quantile)
+                plt.errorbar(x=t, y=y[baryon][key], xerr=0.0, yerr=y_err[baryon][key], fmt=markers[j%len(markers)], capsize=4.0,
+                    color = colors[i%len(colors)], capthick=1.0, alpha=0.6, elinewidth=5.0, label=baryon+'_'+key)
+            delta_quantile = upper_quantile - lower_quantile
+            plt.ylim(lower_quantile - 0.5*delta_quantile,
+                    upper_quantile + 0.5*delta_quantile)
 
         if show_fit:
             t = np.linspace(t_plot_min-2, t_plot_max+2)
@@ -487,14 +524,21 @@ class fit_ensemble(object):
                 plt.plot(t[1:-1], pm(eff_mass_fit, 1), t[1:-1], pm(eff_mass_fit, -1), color=colors[j%len(colors)])
                 plt.fill_between(t[1:-1], pm(eff_mass_fit, -1), pm(eff_mass_fit, 1),
                                  facecolor=colors[j%len(colors)], alpha = 0.10, rasterized=True)
-            plt.title("Best fit for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
+            plt.title("Simultaneous fit to 4 baryons for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(0.5,0.7)
-        plt.legend()
+        plt.ylim(0.55,0.9)
+         # Get unique markers when making legend
+        handles, labels = plt.gca().get_legend_handles_labels()
+        temp = {}
+        for j, handle in enumerate(handles):
+            temp[labels[j]] = handle
+
+        plt.legend([temp[label] for label in sorted(temp.keys())], [label for label in sorted(temp.keys())])
+        # plt.legend()
         plt.grid(True)
         plt.xlabel('$t$', fontsize = 24)
-        plt.ylabel('$M^{eff}$', fontsize = 24)
+        plt.ylabel('$M^{eff}_{baryon}$', fontsize = 24)
         fig = plt.gcf()
         plt.savefig(fig_name)
         if show_plot == True: plt.show()
@@ -609,7 +653,7 @@ class fit_ensemble(object):
 
                 ti = ti + spacing[i]
                 plt.errorbar(ti, y, xerr = 0.0, yerr=yerr, fmt=markers[i%len(markers)], mec='k', mfc='white', ms=10.0,
-                     capsize=5.0, capthick=2.0, elinewidth=5.0, alpha=0.9, ecolor=color, label=r"$N$=%s"%n_state)
+                     capsize=5.0, capthick=1.0, elinewidth=5.0, alpha=0.9, ecolor=color, label=r"$N$=%s"%n_state)
 
 
         # Band for best result
@@ -807,15 +851,30 @@ class fit_ensemble(object):
 
 
     def __str__(self):
-        output = "Fit results: \n"
+        output = "Model Type:" + str(self.model_type) 
+        output = output+"\n"
 
         if self.nucleon_corr_gv is not None:
-            output = output + "\t N_{corr} = "+str(self.n_states['corr'])+"\t"
+            output = output + "\t N_{corr} = "+str(self.n_states[self.model_type])+"\t"
 
         output = output+"\n"
 
         if self.nucleon_corr_gv is not None:
-            output = output + "\t t_{corr} = "+str(self.t_range['corr'])
+            output = output + "\t t_{corr} = "+str(self.t_range[self.model_type])
+        
+        # output += ma.GMO()
+        output = output+"\n"
+        output += "Fit results: \n"
 
         temp_fit = self.get_fit()
+        output += "\t GMO rln = " 
+        output= output+  str(temp_fit.p['lam_E0'] + 1/3* temp_fit.p['sigma_E0'] - 2/3*temp_fit.p['proton_E0'] - 2/3*temp_fit.p['xi_E0'])
+        output = output+"\n"
+        output += "\t M_4 posterior =    " 
+        output += str(temp_fit.p['lam_E0'] - 3* temp_fit.p['sigma_E0'] + temp_fit.p['proton_E0'] + temp_fit.p['xi_E0'])
+        output = output+"\n"
+        output += "\t Centroid posterior =    " 
+        output += str(1/8*temp_fit.p['lam_E0'] + 3/8* temp_fit.p['sigma_E0'] + 1/4*temp_fit.p['proton_E0'] + 1/4*temp_fit.p['xi_E0'])
+        output = output+"\n"
+        
         return output + str(temp_fit)
