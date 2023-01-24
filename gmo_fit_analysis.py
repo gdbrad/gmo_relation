@@ -483,7 +483,6 @@ class fit_ensemble(object):
         elif model_type == 'gmo_ratio':
             nucleon_corr_gv = self.gmo_corr_gv
         
-        effective_mass = {}
         effective_mass['proton'] = self.get_nucleon_effective_mass(nucleon_corr_gv)
         effective_mass['xi'] = self.get_nucleon_effective_mass(xi_corr_gv)
         effective_mass['sigma'] = self.get_nucleon_effective_mass(sigma_corr_gv)
@@ -742,57 +741,6 @@ class fit_ensemble(object):
 
         return fig
 
-    '''
-    sensitivity of extracted spectrum and g_A on model of excited states as function of t_{sep,min}
-    in C_2(t_sep) correlation function. 
-    Plot:
-    - prior vertical box 
-    - posteriors: g_A, E0, En for 3 model types for spectrum of excitations:
-    E_n = E0 + sum(l=1,n) E_l
-         - harmonic-oscillator : E_n = 2m_pi
-         - 1/n : E_n = 2m_pi / n
-         - 1/n^2 : E_n = 2m_pi / n^2
-
-    1. g.s. posteriors insensitive to model used
-    2. excited state posteriors insensitive to model used
-
-    * extracted spectrum highly constrained by numerical data and NOT data * 
-
-    '''
-
-    # def plot_sensitivity(self, model_type=None, t_start=None, t_end=None, t_middle=None,
-    #                    vary_start=True, show_plot=False, n_states_array=None):
-        
-    #     s_mev = 197.3 / 0.08730
-    #     s_gev = s_mev / 1000
-
-    #     # set the enery levels
-    #     mpi = 0.14073
-    #     mN  = 0.4904
-
-    #     models = ['SqW', 'HO', '1/n', '1/n2']
-    #     models = ['HO', '1/n', '1/n2']
-    #     file_m = {'SqW':'sw_result', 'HO':'ho_result', '1/n':'n_result', '1/n2':'n2_result'}
-    #     fits = dict()
-    #     for m in models:
-    #         fits[m] = dict()
-    #         for k in ['logGBF','w','Q','E0','E1','E2','E3','E4','gA','z0','pdE1', 'pdE2', 'pdE3', 'pdE4']:
-    #             fits[m][k] = []
-    #     for t in ['3','4','5','6','7']:
-    #         for m in models:
-    #             f = gv.load('ga_fit_results/spec_results_pt2/'+file_m[m]+t) # [prior, posterior, Q, logGBF]
-    #             fits[m]['logGBF'].append(f[3])
-    #             fits[m]['Q'].append(f[2])
-    #             fits[m]['E0'].append(f[1]['E0'])
-    #             for n in [1,2,3,4]:
-    #                 tmp = f[1]['E0']
-    #                 for l in range(1,n+1):
-    #                     tmp += f[1]['dE'+str(l)]
-    #                 fits[m]['E'+str(n)].append(tmp)
-    #                 fits[m]['pdE'+str(n)].append(f[0]['dE'+str(n)])
-    #             #print(f[0]['dE2'])
-    #             fits[m]['gA'].append(f[1]['A3_00'])
-    #             fits[m]['z0'].append(f[1]['z0'])
 
     def return_best_fit_info(self):
         plt.axis('off')
@@ -825,29 +773,6 @@ class fit_ensemble(object):
 
         return plots
 
-    def make_prior_from_fit(self):
-
-        output = {}
-        fit_parameters = self.get_fit().p
-        for key in list(fit_parameters.keys()):
-            if key == 'log(E0)' or key == 'E0':
-
-                # Only works for protons
-                # In order: proton, Roper resonance, two pions, L=1 pion excitation
-                rough_energy_levels = np.array([938.0, 1440, 938+2*350,  938+2*350+110]) / 938.0
-                output['E'] = gv.gvar(rough_energy_levels*gv.mean(fit_parameters['E0']),
-                                      np.repeat(gv.mean(fit_parameters['E0']) * 350.0/ 938.0, 4))
-
-            elif key == 'wf_dir':
-                wf_dir = gv.gvar(0, 2*gv.mean(fit_parameters['wf_dir'][0]))
-                output['wf_dir'] = np.repeat(wf_dir, 4)
-
-            elif key == 'wf_smr':
-                wf_smr = gv.gvar(gv.mean(fit_parameters['wf_smr'][0]), gv.mean(fit_parameters['wf_smr'][0]))
-                output['wf_smr'] = np.repeat(wf_smr, 4)
-
-        return output
-
 
 
     def __str__(self):
@@ -876,5 +801,21 @@ class fit_ensemble(object):
         output += "\t Centroid posterior =    " 
         output += str(1/8*temp_fit.p['lam_E0'] + 3/8* temp_fit.p['sigma_E0'] + 1/4*temp_fit.p['proton_E0'] + 1/4*temp_fit.p['xi_E0'])
         output = output+"\n"
+        output+= str("\t lam_E0=")
+        output+= str(temp_fit.p['lam_E0'])
+        output = output+"\n" 
+        output += str("1st e.s:")
+        output += str(temp_fit.p['lam_log(dE)'][0])
+        output = output+"\n"
+        output+= str("\t proton_E0=")
+        output = output+"\n"
+
+        output+= str(temp_fit.p['proton_E0'])
+        output = output+"\n"
+        output+= str("\t xi_E0=")
+        output += str(temp_fit.p['xi_E0'])
+        output = output+"\n"
+        output+= str("\t sigma_E0=")
+        output += str(temp_fit.p['sigma_E0'])
         
         return output + str(temp_fit)
