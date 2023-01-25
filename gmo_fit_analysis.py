@@ -270,6 +270,77 @@ class fit_ensemble(object):
 
     # def plot_m4(self,correlators_gv=None,model_type=None, t_plot_min = None, t_plot_max = None,fig_name=None,show_fit=None):
 
+    def plot_gmo_effective_mass(self, effective_mass,t_plot_min=None, model_type=None,
+                            t_plot_max=None, show_plot=True, show_fit=True,fig_name=None):
+        if t_plot_min is None:
+            t_plot_min = self.t_min
+        if t_plot_max is None:
+            t_plot_max = self.t_max
+        markers = ["^", "v"]
+        colors = np.array(['red', 'blue','green','magenta'])
+        t = np.arange(t_plot_min, t_plot_max)
+        # effective_mass = {}
+        if model_type == None:
+            raise TypeError(model_type,'you need to supply a correlator model in order to generate an eff mass plot for that correlator')
+        elif model_type == 'simult_baryons_gmo':
+            nucleon_corr_gv = self.gmo_corr_gv
+        
+        # effective_mass = self.get_gmo_effective(nucleon_corr_gv)
+        # print(effective_mass)
+
+        if effective_mass is None:
+            return None
+
+        y = {}
+        y_err = {}
+        lower_quantile = np.inf
+        upper_quantile = -np.inf
+        for j, key in enumerate(effective_mass.keys()):
+            y[key] = gv.mean(effective_mass[key])[t]
+            y_err[key] = gv.sdev(effective_mass[key])[t]
+            lower_quantile = np.min([np.nanpercentile(y[key], 25), lower_quantile])
+            upper_quantile = np.max([np.nanpercentile(y[key], 75), upper_quantile])
+
+            plt.errorbar(x=t, y=y[key], xerr=0.0, yerr=y_err[key], fmt='o', capsize=5.0,
+                color = colors[j%len(colors)], capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
+        delta_quantile = upper_quantile - lower_quantile
+        plt.ylim(lower_quantile - 0.5*delta_quantile,
+                 upper_quantile + 0.5*delta_quantile)
+
+        if show_fit:
+            t = np.linspace(t_plot_min-2, t_plot_max+2)
+            dt = (t[-1] - t[0])/(len(t) - 1)
+            fit_data_gv = self._generate_data_from_fit(model_type=model_type, t=t)
+
+            for j, key in enumerate(fit_data_gv.keys()):
+                eff_mass_fit = self.get_nucleon_effective_mass(fit_data_gv, dt)[key][1:-1]
+
+                pm = lambda x, k : gv.mean(x) + k*gv.sdev(x)
+                plt.plot(t[1:-1], pm(eff_mass_fit, 0), '--', color=colors[j%len(colors)])
+                plt.plot(t[1:-1], pm(eff_mass_fit, 1), t[1:-1], pm(eff_mass_fit, -1), color=colors[j%len(colors)])
+                plt.fill_between(t[1:-1], pm(eff_mass_fit, -1), pm(eff_mass_fit, 1),
+                                 facecolor=colors[j%len(colors)], alpha = 0.10, rasterized=True)
+            plt.title("gmo_ratio_eff for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
+
+        plt.xlim(t_plot_min-0.5, t_plot_max-.5)
+        plt.ylim(-0.01,0.02)
+         # Get unique markers when making legend
+        handles, labels = plt.gca().get_legend_handles_labels()
+        temp = {}
+        for j, handle in enumerate(handles):
+            temp[labels[j]] = handle
+
+        plt.legend([temp[label] for label in sorted(temp.keys())], [label for label in sorted(temp.keys())])
+        # plt.legend()
+        plt.grid(True)
+        plt.xlabel('$t$', fontsize = 24)
+        plt.ylabel('$M^{eff}_{GMO}$', fontsize = 24)
+        fig = plt.gcf()
+        plt.savefig(fig_name)
+        if show_plot == True: plt.show()
+        else: plt.close()
+
+        return fig
 
 
 
@@ -458,6 +529,7 @@ class fit_ensemble(object):
         markers = ["^", "v"]
         colors = np.array(['red', 'blue', 'green','magenta','yellow','purple','cyan','teal'])
         t = np.arange(t_plot_min, t_plot_max)
+        effective_mass = {}
         if model_type == None:
             raise TypeError(model_type,'you need to supply a correlator model in order to generate an eff mass plot for that correlator')
         elif model_type == 'simult_baryons':
@@ -465,21 +537,6 @@ class fit_ensemble(object):
             xi_corr_gv      = self.xi_corr_gv
             lam_corr_gv     = self.lam_corr_gv
             sigma_corr_gv   = self.sigma_corr_gv
-
-        # elif model_type == 'delta':
-        #     nucleon_corr_gv = self.delta_corr_gv
-        # elif model_type == 'xi':
-        #     nucleon_corr_gv = self.xi_corr_gv
-        # elif model_type == 'lam':
-        #     nucleon_corr_gv = self.lam_corr_gv
-        # elif model_type == 'sigma':
-        #     nucleon_corr_gv = self.sigma_corr_gv
-        # elif model_type == 'pi':
-        #     nucleon_corr_gv = self.piplus_corr_gv
-        # elif model_type == 'kplus':
-        #     nucleon_corr_gv = self.kplus_corr_gv 
-        # elif model_type == 'proton':
-        #     nucleon_corr_gv = self.nucleon_corr_gv
         elif model_type == 'gmo_ratio':
             nucleon_corr_gv = self.gmo_corr_gv
         
@@ -801,21 +858,29 @@ class fit_ensemble(object):
         output += "\t Centroid posterior =    " 
         output += str(1/8*temp_fit.p['lam_E0'] + 3/8* temp_fit.p['sigma_E0'] + 1/4*temp_fit.p['proton_E0'] + 1/4*temp_fit.p['xi_E0'])
         output = output+"\n"
-        output+= str("\t lam_E0=")
+        output+= str("\t lam_E0=  ")
         output+= str(temp_fit.p['lam_E0'])
         output = output+"\n" 
-        output += str("1st e.s:")
-        output += str(temp_fit.p['lam_log(dE)'][0])
+        output += str("\t 1st e.s:  ")
+        output += str(np.exp(temp_fit.p['lam_log(dE)'][0]))
         output = output+"\n"
-        output+= str("\t proton_E0=")
-        output = output+"\n"
-
+        output+= str("\t proton_E0=  ")
         output+= str(temp_fit.p['proton_E0'])
         output = output+"\n"
-        output+= str("\t xi_E0=")
+        output += str("\t 1st e.s:  ")
+        output += str(np.exp(temp_fit.p['proton_log(dE)'][0]))
+        output+= "\n"
+        output+= str("\t xi_E0=  ")
         output += str(temp_fit.p['xi_E0'])
         output = output+"\n"
-        output+= str("\t sigma_E0=")
+        output += str("\t 1st e.s:   ")
+        output += str(np.exp(temp_fit.p['xi_log(dE)'][0]))
+        output = output+"\n"
+        output+= str("\t sigma_E0=  ")
         output += str(temp_fit.p['sigma_E0'])
+        output+= "\n"
+        output += str("\t 1st e.s:  ")
+        output += str(np.exp(temp_fit.p['sigma_log(dE)'][0]))
+        output+= "\n"
         
         return output + str(temp_fit)
