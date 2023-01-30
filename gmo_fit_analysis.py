@@ -282,12 +282,6 @@ class fit_ensemble(object):
         # effective_mass = {}
         if model_type == None:
             raise TypeError(model_type,'you need to supply a correlator model in order to generate an eff mass plot for that correlator')
-        elif model_type == 'simult_baryons_gmo':
-            nucleon_corr_gv = self.gmo_corr_gv
-        
-        # effective_mass = self.get_gmo_effective(nucleon_corr_gv)
-        # print(effective_mass)
-
         if effective_mass is None:
             return None
 
@@ -301,7 +295,7 @@ class fit_ensemble(object):
             lower_quantile = np.min([np.nanpercentile(y[key], 25), lower_quantile])
             upper_quantile = np.max([np.nanpercentile(y[key], 75), upper_quantile])
 
-            plt.errorbar(x=t, y=y[key], xerr=0.0, yerr=y_err[key], fmt='o', capsize=5.0,
+            plt.errorbar(x=t, y=y[key], xerr=0.0, yerr=y_err[key], fmt='o', capsize=2.0,
                 color = colors[j%len(colors)], capthick=2.0, alpha=0.6, elinewidth=5.0, label=key)
         delta_quantile = upper_quantile - lower_quantile
         plt.ylim(lower_quantile - 0.5*delta_quantile,
@@ -826,6 +820,8 @@ class fit_ensemble(object):
         plots = np.append(plots, self.plot_effective_mass(t_plot_min=0,t_plot_max=20,model_type=model_type,fig_name=fig_name,show_fit=True))
 
         return plots
+    
+
 
     def make_gmo_plots(self,model_type=None, fig_name = None,show_all=False):
         plots = np.array([])
