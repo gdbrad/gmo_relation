@@ -18,7 +18,8 @@ p_dict = {
         'gmo' : [2,10], 
         'pi' : [5,30],
         'kplus': [8,28],
-	    'gmo_ratio':[6,15],
+        'mesons': [4,16],
+        'gmo_ratio':[6,15],
         'simult_baryons': [4,15],
         'simult_baryons_gmo':[4,15]
     },
@@ -31,6 +32,7 @@ p_dict = {
         'gmo':2,
         'pi' : 2,
         'kplus': 2,
+        'mesons':2,
 	    'gmo_ratio':2,
         'simult_baryons':2,
         'simult_baryons_gmo':2

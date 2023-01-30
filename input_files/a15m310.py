@@ -10,17 +10,17 @@ p_dict = {
     'snks'     :['SS','PS'],
 
    't_range' : {
-        'sigma' : [6, 16],
+        'sigma' : [6, 15],
         'xi' : [6, 15],
-        'proton' : [6, 12],
+        'proton' : [6, 15],
         'delta' : [6,15],
         'lam' : [6, 15],
         'gmo' : [2,10], 
         'pi' : [5,30],
         'kplus': [8,28],
-	    'gmo_ratio':[6,14],
-        'simult_baryons': [6,15],
-        'simult_baryons_gmo':[6,15]
+	    'gmo_ratio':[6,15],
+        'simult_baryons': [4,15],
+        'simult_baryons_gmo':[4,15]
     },
     'n_states' : {
         'sigma' : 2,
@@ -31,16 +31,36 @@ p_dict = {
         'gmo':2,
         'pi' : 2,
         'kplus': 2,
-	    'gmo_ratio':1
+	    'gmo_ratio':2,
+        'simult_baryons':2,
+        'simult_baryons_gmo':2
+
     },
     
-    'make_plots' : False,
+    'make_plots' : True,
     'save_prior' : False,
     
     'show_all' : True,
     'show_many_states' : False, # This doesn't quite work as expected: keep false
     'use_prior' : True
 }
+'''
+$\delta_{GMO}$ xpt extrapolation model and prior information
+'''
+model_info = {}
+model_info['particles'] = ['piplus','kplus','eta']
+model_info['order_chiral'] = 'lo'
+model_info['tree_level'] = True
+model_info['loop_level'] = False
+model_info['delta'] = True
+model_info['abbr'] = ['a12m180L']
+model_info['observable'] = ['delta_gmo'] #'centroid', 'octet'
+
+prior = {}
+prior['m_{kplus,0}'] = gv.gvar(0.35,.1)
+prior['m_{eta,0}'] = gv.gvar(.3,.2)
+prior['m_{piplus,0}'] = gv.gvar(.25,.1)
+prior['m_{delta,0}'] = gv.gvar(2,1)
 
 # TODO put prior routines in here, filename save options 
 priors = gv.BufferDict()

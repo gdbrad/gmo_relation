@@ -1,6 +1,6 @@
 import gvar as gv 
 p_dict = {
-    'abbr' : 'a06m220L', #CHANGE THIS
+    'abbr' : 'a12m220S', #CHANGE THIS
     'part' : ['delta_pp', 'kplus', 'lambda_z', 'omega_m', 'piplus', 'proton', 'sigma_p', 'sigma_star_p', 'xi_star_z', 'xi_z'], 
     'particles' : ['proton'],
     'meson_states' : ['piplus','kplus'],

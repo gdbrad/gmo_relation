@@ -28,12 +28,15 @@ import mass_relations as ma
 import delta_gmo_fit as gmo_xpt 
 matplotlib.rcParams['figure.figsize'] = [10, 8]
 
+# def plot_m4(results):
+
+
 def main():
     parser = argparse.ArgumentParser(description='analysis of simult. fit to the 4 baryons that form the gmo relation, also fit the gmo product correlator directly')
     parser.add_argument('fit_params', help='input file to specify fit')
     parser.add_argument('fit_type',help='specify simultaneous baryon fit with or without gmo product correlator as input')
     parser.add_argument('pdf',help='generate a pdf and output plot?',default=True)
-    parser.add_argument('xpt',help='run gmo xpt analysis?'default=True)
+    # parser.add_argument('xpt',help='run gmo xpt analysis?',default=True)
 
     args = parser.parse_args()
     # if args.save_figs and not os.path.exists('figures'):
@@ -108,6 +111,9 @@ def main():
             #     output_pdf.savefig(fit_ensemble.plot_stability(model_type='corr', n_states_array=[1, 2, 3, 4]))
             output_pdf.close()
 
+    if args.fit_type == 'mesons':
+        model_type ='mesons'
+
 
     if args.fit_type == 'simult_baryons_gmo':
         model_type = 'simult_baryons_gmo'
@@ -116,6 +122,15 @@ def main():
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,sigma_corr_data=sigma_corr,delta_corr_data=None,gmo_corr_data=gmo_ratio_raw,
         piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
         print(gmo_)
+        fit_out= gmo_.get_fit()
+
+        out_path = 'fit_results/{0}_{1}'.format(p_dict['abbr'],model_type)
+        if os.path.exists(out_path):
+            pass
+        else:
+            os.mkdir(out_path)
+
+        ld.pickle_out(fit_out=fit_out,out_path=out_path,species="baryon_w_gmo")
 
         if args.pdf:
             plots = gmo_.make_gmo_plots(model_type='simult_baryons_gmo', fig_name='plots/{0}_{1}'.format(abbr,model_type))
@@ -128,11 +143,11 @@ def main():
             #     output_pdf.savefig(fit_ensemble.plot_stability(model_type='corr', n_states_array=[1, 2, 3, 4]))
             output_pdf.close()
 
-m 
+
     ''' xpt routines 
     '''
-    if args.xpt:
-        model_info = fp.model_info
+    # if args.xpt:
+    #     model_info = fp.model_info
 
 
 
