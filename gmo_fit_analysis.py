@@ -817,18 +817,32 @@ class fit_ensemble(object):
 
         return fig
 
-    def make_plots(self, show_all=False):
+    def make_plots(self,model_type=None, fig_name = None,show_all=False):
         plots = np.array([])
         plots = np.append(self.return_best_fit_info(), plots)
 
         # Create a plot of best and stability plots
         #plots = np.append(plots, self.plot_all_fits())
-        plots = np.append(plots, self.plot_effective_wf())
-        plots = np.append(plots, self.plot_effective_mass())
-        plots = np.append(plots, self.plot_stability(model_type='corr'))
-        plots = np.append(plots, self.plot_stability(model_type='corr', vary_start=False))
+        plots = np.append(plots, self.plot_effective_mass(t_plot_min=0,t_plot_max=20,model_type=model_type,fig_name=fig_name,show_fit=True))
 
         return plots
+
+    def make_gmo_plots(self,model_type=None, fig_name = None,show_all=False):
+        plots = np.array([])
+        plots = np.append(self.return_best_fit_info(), plots)
+
+        # Create a plot of best and stability plots
+        #plots = np.append(plots, self.plot_all_fits())
+        gmo_eff_mass = self.get_gmo_effective(gmo_ratio=self.gmo_corr_gv)
+        plots = np.append(plots,self.plot_delta_gmo(correlators_gv=self.gmo_corr_gv,t_plot_min=0,t_plot_max=20,model_type=model_type,fig_name = fig_name,show_fit=True))
+        plots = np.append(plots,self.plot_gmo_effective_mass(effective_mass=gmo_eff_mass,t_plot_min=0,t_plot_max=20,model_type=model_type,show_fit=True,fig_name=fig_name))
+
+        return plots
+
+
+    # def gmo_xpt_extrapolation(self):
+
+
 
 
 

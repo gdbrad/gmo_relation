@@ -37,13 +37,30 @@ p_dict = {
 
     },
     
-    'make_plots' : False,
+    'make_plots' : True,
     'save_prior' : False,
     
     'show_all' : True,
     'show_many_states' : False, # This doesn't quite work as expected: keep false
     'use_prior' : True
 }
+'''
+$\delta_{GMO}$ xpt extrapolation model and prior information
+'''
+model_info = {}
+model_info['particles'] = ['piplus','kplus','eta']
+model_info['order_chiral'] = 'lo'
+model_info['tree_level'] = True
+model_info['loop_level'] = False
+model_info['delta'] = True
+model_info['abbr'] = ['a12m180L']
+model_info['observable'] = ['delta_gmo'] #'centroid', 'octet'
+
+prior = {}
+prior['m_{kplus,0}'] = gv.gvar(0.35,.1)
+prior['m_{eta,0}'] = gv.gvar(.3,.2)
+prior['m_{piplus,0}'] = gv.gvar(.25,.1)
+prior['m_{delta,0}'] = gv.gvar(2,1)
 
 # TODO put prior routines in here, filename save options 
 priors = gv.BufferDict()
