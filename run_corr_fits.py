@@ -58,15 +58,60 @@ def main():
 
     p_dict = fp.p_dict
     abbr = p_dict['abbr']
+    if abbr  == 'a12m180S' or abbr == 'a12m220':
+        nucleon_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='proton')
+        prior_nucl = {}
+        prior = {}
+        states=p_dict['states']
+        newlist = [x for x in states]
+        for x in newlist:
+            path = os.path.normpath("./priors/{0}/{1}/prior_nucl.csv".format(p_dict['abbr'],x))
+            df = pd.read_csv(path, index_col=0).to_dict()
+            for key in list(df.keys()):
+                length = int(np.sqrt(len(list(df[key].values()))))
+                prior_nucl[key] = list(df[key].values())[:length]
+                # prior_nucl['gmo_E'] = list([np.repeat(gv.gvar('0.0030(27)'),8)])
+            prior = gv.gvar(prior_nucl)
 
-    nucleon_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='proton')
-    lam_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='lambda_z')
-    xi_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='xi_z')
-    sigma_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='sigma_p')
-    piplus_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='piplus')
-    kplus_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='kplus')
-    delta_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='delta_pp')
-    gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'],log=False)
+    
+    else:
+        nucleon_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='proton')
+        lam_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='lambda_z')
+        xi_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='xi_z')
+        sigma_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='sigma_p')
+        piplus_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='piplus')
+        kplus_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='kplus')
+        delta_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='delta_pp')
+        gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'],log=False)
+
+    if args.fit_type == 'proton':
+        model_type = 'proton'
+        gmo_ = fa.fit_ensemble(t_range=p_dict
+        ['t_range'],t_period=64,p_dict=p_dict, n_states=p_dict['n_states'],prior=prior,
+        nucleon_corr_data=nucleon_corr,lam_corr_data=None, xi_corr_data=None,sigma_corr_data=None,delta_corr_data=None,gmo_corr_data=None,
+        piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
+        # print(gmo_.get_fit().format(maxline=True))
+        print(gmo_)
+        # print(gmo_.get_m_4(t=None))
+        fit_out = gmo_.get_fit()
+        gmo_.plot_effective_mass( t_plot_min=0,t_plot_max=15, model_type=model_type, fig_name='plots/{0}_{1}'.format(abbr,model_type),show_fit=True)
+        out_path = 'fit_results/{0}/'.format(p_dict['abbr'],model_type)
+
+        if os.path.exists(out_path):
+            pass
+        else:
+            os.mkdir(out_path)
+
+        if args.pdf:
+            plots = gmo_.make_plots(model_type=model_type, fig_name='plots/{0}_{1}'.format(abbr,model_type))
+            output_dir = 'fit_results/{0}/{1}_{0}.pdf'.format(p_dict['abbr'],model_type)
+            output_pdf = PdfPages(output_dir)
+            for plot in plots:
+                if plot is not None:
+                    output_pdf.savefig(plot)
+            # if p_dict['show_many_states']:
+            #     output_pdf.savefig(fit_ensemble.plot_stability(model_type='corr', n_states_array=[1, 2, 3, 4]))
+            output_pdf.close()
 
 
     prior_nucl = {}
@@ -85,7 +130,7 @@ def main():
     if args.fit_type == 'simult_baryons':
         model_type = 'simult_baryons'
         gmo_ = fa.fit_ensemble(t_range=p_dict
-        ['t_range'],t_period=64, n_states=p_dict['n_states'],prior=prior,
+        ['t_range'],t_period=64, n_states=p_dict['n_states'],p_dict=p_dict,prior=prior,
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,sigma_corr_data=sigma_corr,delta_corr_data=None,gmo_corr_data=None,
         piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
         # print(gmo_.get_fit().format(maxline=True))

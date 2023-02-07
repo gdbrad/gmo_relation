@@ -17,7 +17,7 @@ import mass_relations as ma
 
 class fit_ensemble(object):
 
-    def __init__(self, t_range,t_period, prior, n_states=None, model_type = None,
+    def __init__(self, t_range,t_period, prior,p_dict, n_states=None, model_type = None,
                  nucleon_corr_data=None,lam_corr_data=None,
                  xi_corr_data=None,sigma_corr_data=None,
                  delta_corr_data=None,
@@ -73,7 +73,7 @@ class fit_ensemble(object):
         t_end = np.max([t_range[key][1] for key in list(t_range.keys())])
 
         max_n_states = np.max([n_states[key] for key in list(n_states.keys())])
-
+        self.p_dict = p_dict
         self.model_type = model_type
         self.nucleon_corr_gv = nucleon_corr_gv
         self.lam_corr_gv = lam_corr_gv
@@ -109,7 +109,7 @@ class fit_ensemble(object):
         if index in list(self.fits.keys()):
             return self.fits[index]
         else:
-            temp_fit = fitter(n_states=n_states, prior=self.prior, t_range=t_range, t_period=t_period,model_type=self.model_type,
+            temp_fit = fitter(n_states=n_states, prior=self.prior,p_dict=self.p_dict, t_range=t_range, t_period=t_period,model_type=self.model_type,
                                nucleon_corr=self.nucleon_corr_gv,lam_corr=self.lam_corr_gv,
                                xi_corr=self.xi_corr_gv,sigma_corr=self.sigma_corr_gv,
                                delta_corr=self.delta_corr_gv, piplus_corr=self.piplus_corr_gv,
@@ -228,7 +228,7 @@ class fit_ensemble(object):
         else:
             return None 
 
-        return fitter(n_states=self.n_states, prior=self.prior, t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
+        return fitter(n_states=self.n_states, prior=self.prior, p_dict=self.p_dict, t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
                       nucleon_corr=nucleon_corr,lam_corr=lam_corr,
                                xi_corr=xi_corr,sigma_corr=sigma_corr,delta_corr=delta_corr,
                                piplus_corr=piplus_corr,kplus_corr=kplus_corr,gmo_ratio_corr=gmo_ratio_corr)._make_models_simult_fit()

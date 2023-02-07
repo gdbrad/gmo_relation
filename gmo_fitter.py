@@ -4,7 +4,7 @@ import gvar as gv
 
 class fitter(object):
 
-    def __init__(self, n_states,prior, t_period,t_range,
+    def __init__(self, n_states,prior,p_dict, t_period,t_range,
                  nucleon_corr=None,lam_corr=None,
                  xi_corr=None,sigma_corr=None,
                  delta_corr = None,
@@ -16,6 +16,7 @@ class fitter(object):
         self.t_period = t_period
         self.t_range = t_range
         self.prior = prior
+        self.p_dict = p_dict
         # self.single_smear = single_smear
         # self.data = data #TODO this should probably override below corrs
         # self.model_info = model_info.copy()
@@ -303,8 +304,9 @@ class fitter(object):
             resized_prior[key] = prior[key][:max_n_states]
 
         new_prior = resized_prior.copy()
-        for corr in ['sigma','lam','proton','xi',
-        'delta','piplus','kplus']:
+        for corr in self.p_dict['states']:
+
+        # for corr in ['sigma','lam','proton','xi','delta','piplus','kplus']:
 
             new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
 
