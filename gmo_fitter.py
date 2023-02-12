@@ -7,12 +7,12 @@ import matplotlib.pyplot as plt
 class fitter(object):
 
     def __init__(self, n_states,prior, t_period,t_range,states,
-                 nucleon_corr=None,lam_corr=None,
+                 nucleon_corr=None,p_dict=None,lam_corr=None,
                  xi_corr=None,sigma_corr=None,
                  delta_corr = None,
                  piplus_corr=None, kplus_corr=None,
                  gmo_ratio_corr=None,
-                model_type=None,simult=None):
+                 model_type=None,simult=None):
 
         self.n_states = n_states
         self.t_period = t_period

@@ -76,8 +76,7 @@ def main():
     kplus_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='kplus')
     delta_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='delta_pp')
     gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'],log=False)
-
-    print(gmo_ratio_raw)
+    print(type(gmo_ratio_raw))
     raw_corr['proton'] = nucleon_corr
     raw_corr['lam'] = lam_corr
     raw_corr['sigma'] = sigma_corr
@@ -107,7 +106,7 @@ def main():
         # print(new_d)
         model_type = 'xi'
         xi_ = fa.fit_ensemble(t_range=p_dict
-        ['t_range'],t_period=64, n_states=p_dict['n_states'],states=['xi'],prior=prior_xi,
+        ['t_range'],t_period=64, n_states=p_dict['n_states'],prior=prior_xi,
         nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=xi_corr,
         sigma_corr_data=None,delta_corr_data=None,gmo_corr_data=None,
         piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
@@ -253,7 +252,7 @@ def main():
     if args.fit_type == 'simult_baryons_gmo':
         model_type = 'simult_baryons_gmo'
         gmo_ = fa.fit_ensemble(t_range=p_dict
-        ['t_range'],t_period=64,simult=True, states= p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,
+        ['t_range'],p_dict=p_dict,t_period=64,states=p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,simult=True,
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
         sigma_corr_data=sigma_corr,delta_corr_data=None,gmo_corr_data=gmo_ratio_raw,
         piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
@@ -288,7 +287,7 @@ def main():
             bs_list_gmo = bs.get_bs_list(Ndata=ncfg_gmo,Nbs=100)
             def resample_correlator(raw_corr,bs_list, n,gmo=None):
                 if gmo:
-                    resampled_raw_corr_data = ({key : raw_corr[key][bs_list[n, :]]
+                    resampled_raw_corr_data = ({key : raw_corr[key][bs_list_gmo[n, :]]
                 for key in raw_corr.keys()})
 
                 else:
@@ -297,14 +296,6 @@ def main():
                 resampled_corr_gv = resampled_raw_corr_data
                 return resampled_corr_gv
             
-            # # make fit with resampled correlators
-            # gmo_bs = fa.fit_ensemble(t_range=p_dict
-            # ['t_range'],t_period=64,simult=True, states= p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,
-            # nucleon_corr_data=nucleon_bs,lam_corr_data=lam_bs, xi_corr_data=xi_bs,
-            # sigma_corr_data=sigma_bs,delta_corr_data=None,gmo_corr_data=gmo_bs,
-            # piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
-            # # print(test)
-
             fit_parameters_keys = sorted(fit_out.p.keys()) # eg, 'wf_ps', 'E0', ..
             output = {key : [] for key in fit_parameters_keys}
             bs_N = 50
@@ -323,28 +314,35 @@ def main():
                 xi_bs = resample_correlator(xi_corr,bs_list=bs_list,n=j)
                 lam_bs = resample_correlator(lam_corr,bs_list=bs_list,n=j)
                 sigma_bs = resample_correlator(sigma_corr,bs_list=bs_list,n=j)
-                # gmo_bs = resample_correlator(gmo_ratio_raw,bs_list=bs_list_gmo,n=j,gmo=True)
+                gmo_bs_corr = resample_correlator(gmo_ratio_raw,bs_list=bs_list_gmo,n=j,gmo=True)
+                gmo_array  = np.asarray(gmo_bs_corr)
+                gmo_new = gv.BufferDict()
+                for x in gmo_bs_corr.values():
+                    if isinstance(x,float):
+                        gmo_new.append(x)
+                print(gmo_new)
                     
                 # make fit with resampled correlators
                 gmo_bs = fa.fit_ensemble(t_range=p_dict
-                ['t_range'],t_period=64,simult=True, states= p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,
+                ['t_range'],t_period=64,simult=True, p_dict=p_dict, states= p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,
                 nucleon_corr_data=nucleon_bs,lam_corr_data=lam_bs, xi_corr_data=xi_bs,
-                sigma_corr_data=sigma_bs,delta_corr_data=None,gmo_corr_data=None
+                sigma_corr_data=sigma_bs,delta_corr_data=None,gmo_corr_data=gmo_bs_corr
                 ,
                 piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
                 temp_fit = gmo_bs.get_fit()
+                print(temp_fit)
 
-                for key in fit_parameters_keys:
-                    # Save the best estimate for the central value 
-                    # of each parameter of each fit
-                    p = temp_fit.pmean[key]
-                    output[key].append(p)
+                # for key in fit_parameters_keys:
+                #     # Save the best estimate for the central value 
+                #     # of each parameter of each fit
+                #     p = temp_fit.pmean[key]
+                #     output[key].append(p)
 
                 gv.restore_gvar()
 
                 # print results -- should be similar to previous results
-            table = gv.dataset.avg_data(output, bstrap=True)
-            print(gv.tabulate(table))
+            # table = gv.dataset.avg_data(output, bstrap=True)
+            # print(gv.tabulate(table))
 
 
     ''' xpt routines 

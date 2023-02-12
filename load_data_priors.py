@@ -37,7 +37,8 @@ def G_gmo(file_h5,abbr,log=None):
     for smr in get_raw_corr(file_h5=file_h5, abbr=abbr,particle='proton'): 
         for part in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
             temp[(part, smr)] = get_raw_corr(file_h5=file_h5, abbr=abbr,particle=part)[smr]
-    temp = gv.dataset.avg_data(temp)
+    # temp = gv.dataset.avg_data(temp)
+
     # print(temp)
     output = {}
     for smr in get_raw_corr(file_h5=file_h5, abbr=abbr,particle='proton'):
@@ -55,7 +56,7 @@ def G_gmo(file_h5,abbr,log=None):
                 * np.power(temp[('proton', smr)], -2/3)
                 * np.power(temp[('xi_z', smr)], -2/3)
             )
-    return output
+    return gv.dataset.avg_data(output)
 def fetch_prior(p_dict,states):
 
     prior_nucl = {}
