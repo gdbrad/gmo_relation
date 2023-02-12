@@ -19,7 +19,7 @@ import load_data_priors as ld
 
 class fit_ensemble(object):
 
-    def __init__(self, states,t_range,t_period, prior, n_states=None, model_type = None,
+    def __init__(self, t_range,t_period, prior,p_dict, n_states=None, model_type = None,
                  nucleon_corr_data=None,lam_corr_data=None,
                  xi_corr_data=None,sigma_corr_data=None,
                  delta_corr_data=None,
@@ -75,7 +75,7 @@ class fit_ensemble(object):
         t_end = np.max([t_range[key][1] for key in list(t_range.keys())])
 
         max_n_states = np.max([n_states[key] for key in list(n_states.keys())])
-        self.states = states
+        self.p_dict = p_dict
         self.model_type = model_type
         self.nucleon_corr_gv = nucleon_corr_gv
         self.lam_corr_gv = lam_corr_gv

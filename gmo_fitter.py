@@ -18,6 +18,7 @@ class fitter(object):
         self.t_period = t_period
         self.t_range = t_range
         self.prior = prior
+        self.p_dict = p_dict
         # self.single_smear = single_smear
         # self.data = data #TODO this should probably override below corrs
         # self.model_info = model_info.copy()

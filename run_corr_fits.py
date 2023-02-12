@@ -51,6 +51,20 @@ def main():
 
     p_dict = fp.p_dict
     abbr = p_dict['abbr']
+    if abbr  == 'a12m180S' or abbr == 'a12m220':
+        nucleon_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='proton')
+        prior_nucl = {}
+        prior = {}
+        states=p_dict['states']
+        newlist = [x for x in states]
+        for x in newlist:
+            path = os.path.normpath("./priors/{0}/{1}/prior_nucl.csv".format(p_dict['abbr'],x))
+            df = pd.read_csv(path, index_col=0).to_dict()
+            for key in list(df.keys()):
+                length = int(np.sqrt(len(list(df[key].values()))))
+                prior_nucl[key] = list(df[key].values())[:length]
+                # prior_nucl['gmo_E'] = list([np.repeat(gv.gvar('0.0030(27)'),8)])
+            prior = gv.gvar(prior_nucl)
 
     # pull in raw corr data
     raw_corr = {}
