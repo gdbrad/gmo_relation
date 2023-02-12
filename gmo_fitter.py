@@ -1,16 +1,18 @@
 import lsqfit
 import numpy as np 
 import gvar as gv
+import matplotlib
+import matplotlib.pyplot as plt
 
 class fitter(object):
 
-    def __init__(self, n_states,prior, t_period,t_range,
+    def __init__(self, n_states,prior, t_period,t_range,states,
                  nucleon_corr=None,lam_corr=None,
                  xi_corr=None,sigma_corr=None,
                  delta_corr = None,
                  piplus_corr=None, kplus_corr=None,
                  gmo_ratio_corr=None,
-                model_type=None):
+                model_type=None,simult=None):
 
         self.n_states = n_states
         self.t_period = t_period
@@ -29,13 +31,46 @@ class fitter(object):
         self.gmo_ratio_corr = gmo_ratio_corr
         self.fit = None
         self.model_type = model_type
+        self.simult = simult
+        self.states = states
         self.prior = self._make_prior(prior)
+        effective_mass = {}
+        self.effective_mass = effective_mass
         # self.fits = {}
         # self.extrapolate = None
         # self.simultaneous = False
         # self.y = {datatag : self.data['eps_'+datatag] for datatag in self.model_info['particles']}
 
-    #  
+    def return_best_fit_info(self):
+        plt.axis('off')
+        # these are matplotlib.patch.Patch properties
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+
+        # place a text box in upper left in axes coords
+        #plt.text(0.05, 0.05, str(fit_ensemble.get_fit(fit_ensemble.best_fit_time_range[0], fit_ensemble.best_fit_time_range[1])),
+        #fontsize=14, horizontalalignment='left', verticalalignment='bottom', bbox=props)
+        text = self.__str__().expandtabs()
+        plt.text(0.0, 1.0, str(text),
+                 fontsize=16, ha='left', va='top', family='monospace', bbox=props)
+
+        plt.tight_layout()
+        fig = plt.gcf()
+        plt.close()
+
+        return fig
+
+    def __str__(self):
+        output = "Model Type:" + str(self.model_type) 
+        output = output+"\n"
+
+        output = output + "\t N_{corr} = "+str(self.n_states[self.model_type])+"\t"
+        output = output+"\n"
+        output += "Fit results: \n"
+
+        output += str(self.get_fit())
+        return output
+
+
     def _generate_data_from_fit(self, t,fit=None, t_start=None, t_end=None, model_type=None, n_states=None):
         if model_type is None:
             return None
@@ -67,6 +102,78 @@ class fitter(object):
         else:
             return self._make_fit()
 
+    def fcn_effective_mass(self, t, t_start=None, t_end=None, n_states=None):
+        if t_start is None:
+            t_start = self.t_range[self.model_type][0]
+        if t_end is None:
+            t_end = self.t_range[self.model_type][1]
+        if n_states is None: n_states = self.n_states
+
+        p = self.get_fit().p
+        output = {}
+        for model in self._make_models_simult_fit():
+            snk = model.datatag
+            output[snk] = model.fcn_effective_mass(p, t)
+        return output
+
+    def plot_effective_mass(self, tmin=None, tmax=None, ylim=None, show_fit=True,show_plot=True,fig_name=None):
+        if tmin is None: tmin = 1
+        if tmax is None: tmax = self.t_period - 1
+
+        fig = self._plot_quantity(
+            quantity=self.effective_mass, 
+            ylabel=r'$m_\mathrm{eff}$', 
+            tmin=tmin, tmax=tmax, ylim=ylim) 
+
+        if show_fit:
+            ax = plt.gca()
+
+            colors = ['rebeccapurple', 'mediumseagreen']
+            t = np.linspace(tmin, tmax)
+            effective_mass_fit = self.fcn_effective_mass(t=t)
+            for j, snk in enumerate(sorted(effective_mass_fit)):
+                color = colors[j%len(colors)]
+
+                pm = lambda x, k : gv.mean(x) + k*gv.sdev(x)
+                ax.plot(t, pm(effective_mass_fit[snk], 0), '--', color=color)
+                ax.plot(t, pm(effective_mass_fit[snk], 1), 
+                            t, pm(effective_mass_fit[snk], -1), color=color)
+                ax.fill_between(t, pm(effective_mass_fit[snk], -1), pm(effective_mass_fit[snk], 1), facecolor=color, alpha = 0.10, rasterized=True)
+
+        fig = plt.gcf()
+        if show_plot:
+            plt.show()
+        plt.close()
+        return fig
+
+    def _plot_quantity(self, quantity,
+            tmin, tmax, ylabel=None, ylim=None):
+
+        fig, ax = plt.subplots()
+        
+        colors = ['rebeccapurple', 'mediumseagreen']
+        for j, snk in enumerate(sorted(quantity)):
+            x = np.arange(tmin, tmax)
+            y = gv.mean(quantity[snk])[x]
+            y_err = gv.sdev(quantity[snk])[x]
+
+            ax.errorbar(x, y, xerr = 0.0, yerr=y_err, fmt='o', capsize=5.0,
+                        color=colors[j%len(quantity)], capthick=2.0, alpha=0.6, elinewidth=5.0, label=snk)
+
+        # Label dirac/smeared data
+        #plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+        plt.legend(loc=3, bbox_to_anchor=(0,1), ncol=len(quantity))
+        plt.grid(True)
+        plt.xlabel('$t$', fontsize = 24)
+        plt.ylabel(ylabel, fontsize = 24)
+
+        if ylim is not None:
+            plt.ylim(ylim)
+        fig = plt.gcf()
+        return fig
+
+
+
     def get_energies(self):
 
         # Don't rerun the fit if it's already been made
@@ -89,23 +196,18 @@ class fitter(object):
 
         models = self._make_models_simult_fit()
         data = self._make_data()
-        # prior = self._make_prior(self.prior)
         fitter = lsqfit.MultiFitter(models=models)
-        # print(fitter)
         fit = fitter.lsqfit(data=data, prior=self.prior)
-        # print(fit)
         self.fit = fit
         return fit
 
     def _make_models_simult_fit(self):
         models = np.array([])
-        # 
         if self.gmo_ratio_corr is not  None:
             for sink in list(self.gmo_ratio_corr.keys()):
 
                 param_keys = {
                     'gmo_E0'    : 'gmo_E0',
-                    # 'a'   : 'a',
                     'sigma_E0'  : 'sigma_E0',
                     'xi_E0'     : 'xi_E0',
                     'lam_E0'    : 'lam_E0',
@@ -258,43 +360,6 @@ class fitter(object):
                 data["kplus_"+sinksrc] = self.kplus_corr[sinksrc][self.t_range['kplus'][0]:self.t_range['kplus'][1]]
         return data
 
-    def _make_prior_nested(self, prior):
-        # not used yet, dont think multifitter can take nested dicts as inputs without modifications #
-        resized_prior = {}
-
-        max_n_states = np.max([self.n_states[key] for key in list(self.n_states.keys())])
-        gmo_list = ['sigma_p','lambda_z','proton','xi_z','delta']
-        gmo_list_ = [x for x in gmo_list]
-        # print(gmo_list_)
-        for corr in gmo_list:
-            # print(corr)
-            resized_prior[corr] = {}
-            for key in list(prior[corr].keys()):
-                resized_prior[corr][key] = prior[corr][key][:max_n_states]
-
-            new_prior = resized_prior.copy()
-            new_prior[corr]['E0'] = resized_prior[corr]['E'][0]
-            # Don't need this entry
-            new_prior.pop('E', None)
-
-        # We force the energy to be positive by using the log-normal dist of dE
-        # let log(dE) ~ eta; then dE ~ e^eta
-            new_prior[corr]['log(dE)'] = gv.gvar(np.zeros(len(resized_prior[corr]['E']) - 1))
-            for j in range(len(new_prior[corr]['log(dE)'])):
-                #excited_state_energy = p[self.mass] + np.sum([np.exp(p[self.log_dE][k]) for k in range(j-1)], axis=0)
-
-                # Notice that I've coded this s.t.
-                # the std is determined entirely by the excited state
-                # dE_mean = gv.mean(resized_prior['E'][j+1] - resized_prior['E'][j])
-                # dE_std = gv.sdev(resized_prior['E'][j+1])
-                temp = gv.gvar(resized_prior[corr]['E'][j+1]) - gv.gvar(resized_prior[corr]['E'][j])
-                temp2 = gv.gvar(resized_prior[corr]['E'][j+1])
-                temp_gvar = gv.gvar(temp.mean,temp2.sdev)
-                print(temp_gvar)
-                new_prior[corr]['log(dE)'][j] = np.log(temp_gvar)
-
-        return new_prior
-
     def _make_prior(self,prior):
         resized_prior = {}
 
@@ -303,30 +368,83 @@ class fitter(object):
             resized_prior[key] = prior[key][:max_n_states]
 
         new_prior = resized_prior.copy()
-        for corr in ['sigma','lam','proton','xi',
-        'delta','piplus','kplus']:
+        if self.simult:
 
-            new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
-
-        # Don't need this entry
-            new_prior.pop(corr+'_E', None)
+            for corr in ['sigma','lam','proton','xi','delta','piplus','kplus']:
+                new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
+                new_prior.pop(corr+'_E', None)
 
         # We force the energy to be positive by using the log-normal dist of dE
         # let log(dE) ~ eta; then dE ~ e^eta
-            new_prior[corr+'_log(dE)'] = gv.gvar(np.zeros(len(resized_prior[corr+'_E']) - 1))
-            for j in range(len(new_prior[corr+'_log(dE)'])):
-                #excited_state_energy = p[self.mass] + np.sum([np.exp(p[self.log_dE][k]) for k in range(j-1)], axis=0)
+                new_prior[corr+'_log(dE)'] = gv.gvar(np.zeros(len(resized_prior[corr+'_E']) - 1))
+                for j in range(len(new_prior[corr+'_log(dE)'])):
+                    temp = gv.gvar(resized_prior[corr+'_E'][j+1]) - gv.gvar(resized_prior[corr+'_E'][j])
+                    temp2 = gv.gvar(resized_prior[corr+'_E'][j+1])
+                    temp_gvar = gv.gvar(temp.mean,temp2.sdev)
+                    new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
+        else:
+            for corr in self.states:
+                new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
+                new_prior.pop(corr+'_E', None)
 
-                # Notice that I've coded this s.t.
-                # the std is determined entirely by the excited state
-                # dE_mean = gv.mean(resized_prior['E'][j+1] - resized_prior['E'][j])
-                # dE_std = gv.sdev(resized_prior['E'][j+1])
-                temp = gv.gvar(resized_prior[corr+'_E'][j+1]) - gv.gvar(resized_prior[corr+'_E'][j])
-                temp2 = gv.gvar(resized_prior[corr+'_E'][j+1])
-                temp_gvar = gv.gvar(temp.mean,temp2.sdev)
-                new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
+        # We force the energy to be positive by using the log-normal dist of dE
+        # let log(dE) ~ eta; then dE ~ e^eta
+                new_prior[corr+'_log(dE)'] = gv.gvar(np.zeros(len(resized_prior[corr+'_E']) - 1))
+                for j in range(len(new_prior[corr+'_log(dE)'])):
+                    temp = gv.gvar(resized_prior[corr+'_E'][j+1]) - gv.gvar(resized_prior[corr+'_E'][j])
+                    temp2 = gv.gvar(resized_prior[corr+'_E'][j+1])
+                    temp_gvar = gv.gvar(temp.mean,temp2.sdev)
+                    new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
 
         return new_prior
+            
+
+
+class gmo_linear_model(lsqfit.MultiFitterModel):
+    '''
+    Product of the four baryon correlation functions modeled as a decaying exponential. Asymptotes to the GMO Relation ~0. 
+    TODO is the normalization coefficient the single octet relation ?? 
+
+    We treat the linear combination of the 4 baryons as a single fit parameter, then fit to 3rd? order in the taylor expansion with $/delta B$ as the overlap factor for the product correlator 
+    '''
+    def __init__(self, datatag, t, param_keys, n_states):
+        super(gmo_linear_model, self).__init__(datatag)
+        # variables for fit
+        self.t = np.array(t)
+        self.n_states = n_states
+        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
+        self.param_keys = param_keys
+
+    def fitfcn(self, p, t=None):
+        if t is None:
+            t = self.t
+        
+        d_gmo_0 = p[self.param_keys['d_gmo_0']]
+        A_0 = p[self.param_keys['A_0']]
+        delta_B = p[self.param_keys['delta_B']]
+        gmo_log_dE = p[self.param_keys['gmo_log(dE)']]
+        B_p = p[self.param_keys['proton_z']]
+        B_s = p[self.param_keys['sigma_z']]
+        B_x = p[self.param_keys['xi_z']]
+        B_l = p[self.param_keys['lam_z']]
+
+        output_gmo = A_0 * np.exp(-d_gmo_0 * t)
+        for j in range(1, self.n_states):
+            d_gmo_esc =  d_gmo_0+ np.sum([np.exp(gmo_log_dE[k]) for k in range(j)], axis=0)
+        output_gmo +=  (B_l + 1/3*B_s - 2/3*B_p - 2/3*B_x + delta_B) * np.exp(-d_gmo_esc * t)
+        
+        return output_gmo
+
+    # The prior determines the variables that will be fit by multifitter --
+    # each entry in the prior returned by this function will be fitted
+    def buildprior(self, prior, mopt=None, extend=False):
+        # Extract the model's parameters from prior.
+        return prior
+
+    def builddata(self, data):
+        # Extract the model's fit data from data.
+        # Key of data must match model's datatag!
+        return data[self.datatag]
 
 class gmo_model(lsqfit.MultiFitterModel):
     '''
@@ -351,7 +469,6 @@ class gmo_model(lsqfit.MultiFitterModel):
         sigma_E0 = p[self.param_keys['sigma_E0']]
         xi_E0 =  p[self.param_keys['xi_E0']]
         lam_E0  = p[self.param_keys['lam_E0']]
-        gmo_E0 = p[self.param_keys['gmo_E0']]
         proton_log_dE = p[self.param_keys['p_log(dE)']]
         sigma_log_dE = p[self.param_keys['s_log(dE)']]
         xi_log_dE = p[self.param_keys['x_log(dE)']]
@@ -360,12 +477,6 @@ class gmo_model(lsqfit.MultiFitterModel):
         z_s = p[self.param_keys['sigma_z']]
         z_x = p[self.param_keys['xi_z']]
         z_l = p[self.param_keys['lam_z']]
-
-        # print(a)
-        # gmo = lam_E0 + 1/3*sigma_E0 - 2/3*proton_E0 - 2/3*xi_E0
-        # delta_gmo = np.exp(-gmo_E0*t)
-        # output = a * delta_gmo 
-        # print(delta_gmo)
         
         output_p = z_p[0] * np.exp(-proton_E0 * t)
         for j in range(1, self.n_states):
@@ -385,30 +496,7 @@ class gmo_model(lsqfit.MultiFitterModel):
             output_l = output_l + z_l[j] * np.exp(-l_esc*t)
             
         output = output_l * np.power(output_s,1/3)*np.power(output_p,-2/3) * np.power(output_x,-2/3)
-        
 
-        # for j in range(1, self.n_states):
-        #     p_esc    = proton_E0 + np.sum([np.exp(proton_log_dE[k]) for k in range(j)], axis=0)
-        #     output_p = output_p + (z_p[j] * np.exp(-p_esc*t),-2/3)
-        #     s_esc    = sigma_E0 + np.sum([np.exp(sigma_log_dE[k]) for k in range(j)], axis=0)
-        #     output_s = output_s + np.power(z_s[j] * np.exp(-s_esc*t),1/3)
-        #     x_esc    = xi_E0 + np.sum([np.exp(xi_log_dE[k]) for k in range(j)], axis=0)
-        #     output_x = output_x + np.power(z_x[j] * np.exp(-x_esc*t),-2/3)
-        #     l_esc    =  lam_E0 + np.sum([np.exp(lam_log_dE[k]) for k in range(j)], axis=0)
-        #     output_l = output_l + z_l[j] * np.exp(-l_esc*t)
-
-        # esc = np.power(output_x,-2/3) * np.power(output_s,1/3) * output_l * np.power(output_p,-2/3)
-        # output = esc
-
-
-
-        # print(output)
-        # output+= 
-        # output *= p_esc * s_esc * x_esc * l_esc
-        # output = z[0] * np.exp(-E0 * t)
-        # # print(output)
-        # for j in range(1, self.n_states):
-        # #     output = output + np.power(np.exp((l_esc + (1/3*s_esc) - (2/3*p_esc) - (2/3*x_esc))) * t,-1)
         return output
 
     # The prior determines the variables that will be fit by multifitter --
@@ -447,6 +535,13 @@ class proton_model(lsqfit.MultiFitterModel):
             output = output +z[j] * np.exp(-excited_state_energy * t)
         return output
 
+    def fcn_effective_mass(self, p, t=None):
+        if t is None:
+            t=self.t
+
+        return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
+
+
     # The prior determines the variables that will be fit by multifitter --
     # each entry in the prior returned by this function will be fitted
     def buildprior(self, prior, mopt=None, extend=False):
@@ -457,15 +552,6 @@ class proton_model(lsqfit.MultiFitterModel):
         # Extract the model's fit data from data.
         # Key of data must match model's datatag!
         return data[self.datatag]
-
-    # def fcn_effective_mass(self, p, t=None):
-    #     if t is None:
-    #         t=self.t
-        
-    #     num = 0
-    #     num += self.fitfcn()
-
-    #     return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
 
 class lam_model(lsqfit.MultiFitterModel):
     def __init__(self, datatag, t, param_keys, n_states):
@@ -493,6 +579,12 @@ class lam_model(lsqfit.MultiFitterModel):
             excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
             output = output +z[j] * np.exp(-excited_state_energy * t)
         return output
+
+    def fcn_effective_mass(self, p, t=None):
+        if t is None:
+            t=self.t
+
+        return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
 
     # The prior determines the variables that will be fit by multifitter --
     # each entry in the prior returned by this function will be fitted
@@ -532,6 +624,12 @@ class xi_model(lsqfit.MultiFitterModel):
             output = output +z[j] * np.exp(-excited_state_energy * t)
         return output
 
+    def fcn_effective_mass(self, p, t=None):
+        if t is None:
+            t=self.t
+
+        return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
+
     # The prior determines the variables that will be fit by multifitter --
     # each entry in the prior returned by this function will be fitted
     def buildprior(self, prior, mopt=None, extend=False):
@@ -542,6 +640,8 @@ class xi_model(lsqfit.MultiFitterModel):
         # Extract the model's fit data from data.
         # Key of data must match model's datatag!
         return data[self.datatag]
+
+    
 
 class sigma_model(lsqfit.MultiFitterModel):
     def __init__(self, datatag, t, param_keys, n_states):
@@ -569,6 +669,12 @@ class sigma_model(lsqfit.MultiFitterModel):
             excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
             output = output +z[j] * np.exp(-excited_state_energy * t)
         return output
+
+    def fcn_effective_mass(self, p, t=None):
+        if t is None:
+            t=self.t
+
+        return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
 
     # The prior determines the variables that will be fit by multifitter --
     # each entry in the prior returned by this function will be fitted

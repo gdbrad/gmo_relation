@@ -3,11 +3,13 @@ p_dict = {
     'abbr' : 'a12m180L', #CHANGE THIS
     'part' : ['delta_pp', 'kplus', 'lambda_z', 'omega_m', 'piplus', 'proton', 'sigma_p', 'sigma_star_p', 'xi_star_z', 'xi_z'], 
     'particles' : ['proton'],
+    'states' : ['sigma_p'],
     'meson_states' : ['piplus','kplus'],
     'gmo_states': ['sigma_p','lambda_z','proton','xi_z'], #states for gmo study
     'gmo_states_all' : ['gmo_num','delta','sigma_p','lambda_z','proton','xi_z','piplus','kplus'],
     'srcs'     :['S'],
     'snks'     :['SS','PS'],
+    'bs_seed' : 'a12m180L',
 
    't_range' : {
         'sigma' : [6, 15],
@@ -17,11 +19,17 @@ p_dict = {
         'lam' : [6, 15],
         'gmo' : [2,10], 
         'pi' : [5,30],
-        'kplus': [8,28],
+        'kplus': [8,40],
         'mesons': [4,16],
         'gmo_ratio':[6,15],
-        'simult_baryons': [4,15],
-        'simult_baryons_gmo':[4,15]
+        'simult_baryons': [6,15],
+        'simult_baryons_gmo':[4,15],
+        'simult_XSL_gmo':[4,15],
+        'simult_XSN_gmo':[4,15],
+        'simult_XNL_gmo':[4,15],
+        'simult_NSL_gmo':[4,15]
+
+
     },
     'n_states' : {
         'sigma' : 2,
@@ -35,7 +43,11 @@ p_dict = {
         'mesons':2,
 	    'gmo_ratio':2,
         'simult_baryons':2,
-        'simult_baryons_gmo':2
+        'simult_baryons_gmo':2,
+        'simult_XSL_gmo':2,
+        'simult_XSN_gmo':2,
+        'simult_XNL_gmo':2,
+        'simult_NSL_gmo':2
 
     },
     
