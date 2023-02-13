@@ -9,8 +9,6 @@ class fitter(object):
     def __init__(self, n_states,prior, t_period,t_range,states,
                  nucleon_corr=None,p_dict=None,lam_corr=None,
                  xi_corr=None,sigma_corr=None,
-                 delta_corr = None,
-                 piplus_corr=None, kplus_corr=None,
                  gmo_ratio_corr=None,
                  model_type=None,simult=None):
 
@@ -19,16 +17,10 @@ class fitter(object):
         self.t_range = t_range
         self.prior = prior
         self.p_dict = p_dict
-        # self.single_smear = single_smear
-        # self.data = data #TODO this should probably override below corrs
-        # self.model_info = model_info.copy()
         self.lam_corr=lam_corr
         self.sigma_corr=sigma_corr
         self.nucleon_corr=nucleon_corr
         self.xi_corr=xi_corr
-        self.delta_corr = delta_corr
-        self.piplus_corr = piplus_corr
-        self.kplus_corr = kplus_corr
         self.gmo_ratio_corr = gmo_ratio_corr
         self.fit = None
         self.model_type = model_type
@@ -39,7 +31,6 @@ class fitter(object):
         self.effective_mass = effective_mass
         # self.fits = {}
         # self.extrapolate = None
-        # self.simultaneous = False
         # self.y = {datatag : self.data['eps_'+datatag] for datatag in self.model_info['particles']}
 
     def return_best_fit_info(self):
@@ -173,8 +164,6 @@ class fitter(object):
         fig = plt.gcf()
         return fig
 
-
-
     def get_energies(self):
 
         # Don't rerun the fit if it's already been made
@@ -204,7 +193,7 @@ class fitter(object):
 
     def _make_models_simult_fit(self):
         models = np.array([])
-        if self.gmo_ratio_corr is not  None:
+        if self.model_type == 'simult_baryons_gmo':
             for sink in list(self.gmo_ratio_corr.keys()):
 
                 param_keys = {
@@ -291,44 +280,8 @@ class fitter(object):
                         sigma_model(datatag="sigma_"+sink,
                         t=list(range(self.t_range['sigma'][0], self.t_range['sigma'][1])),
                         param_keys=param_keys, n_states=self.n_states['sigma']))
-        if self.delta_corr is not None:
-            # if self.mutliple_smear == False:
-            for sink in list(self.delta_corr.keys()):
-                param_keys = {
-                    'delta_E0'      : 'delta_E0',
-                    # 'E1'      : 'E1',
-                    # 'E2'      : 'E2',
-                    # 'E3'      : 'E3',
-                    'delta_log(dE)' : 'delta_log(dE)',
-                    'delta_z'      : 'delta_z_'+sink 
-                    # 'z_PS'      : 'z_PS',
-                }   
-                models = np.append(models,
-                        delta_model(datatag="delta_"+sink,
-                        t=list(range(self.t_range['delta'][0], self.t_range['delta'][1])),
-                        param_keys=param_keys, n_states=self.n_states['delta']))
 
-        if self.piplus_corr is not None:
-            for sink in list(self.piplus_corr.keys()):
-                param_keys = {
-                    'piplus_E0' : 'piplus_E0',
-                    'piplus_log(dE)' : 'piplus_log(dE)',
-                    'piplus_z'      : 'piplus_z_'+sink
-                }
-                models = np.append(models,
-                           pi_Model(datatag="piplus_"+sink,t=list(range(self.t_range['pi'][0], self.t_range['pi'][1])), t_period=self.t_period,
-                           param_keys=param_keys, n_states=self.n_states['pi']))
 
-        if self.kplus_corr is not None:
-            for sink in list(self.kplus_corr.keys()):
-                param_keys = {
-                    'kplus_E0' : 'kplus_E0',
-                    'kplus_log(dE)' : 'kplus_log(dE)',
-                    'kplus_z'      : 'kplus_z_'+sink,
-                }
-                models = np.append(models,
-                           kplus_Model(datatag="kplus_"+sink,t=list(range(self.t_range['kplus'][0], self.t_range['kplus'][1])), t_period=self.t_period,
-                           param_keys=param_keys, n_states=self.n_states['kplus']))
         return models
 
     # data array needs to match size of t array
@@ -347,18 +300,9 @@ class fitter(object):
         if self.sigma_corr is not None:
             for sinksrc in list(self.sigma_corr.keys()):
                 data["sigma_"+sinksrc] = self.sigma_corr[sinksrc][self.t_range['sigma'][0]:self.t_range['sigma'][1]]
-        if self.delta_corr is not None:
-            for sinksrc in list(self.delta_corr.keys()):
-                data["delta_"+sinksrc] = self.delta_corr[sinksrc][self.t_range['delta'][0]:self.t_range['delta'][1]]
         if self.xi_corr is not None:
             for sinksrc in list(self.xi_corr.keys()):
                 data["xi_"+sinksrc] = self.xi_corr[sinksrc][self.t_range['xi'][0]:self.t_range['xi'][1]]
-        if self.piplus_corr is not None:
-            for sinksrc in list(self.piplus_corr.keys()):
-                data["piplus_"+sinksrc] = self.piplus_corr[sinksrc][self.t_range['pi'][0]:self.t_range['pi'][1]]
-        if self.kplus_corr is not None:
-            for sinksrc in list(self.kplus_corr.keys()):
-                data["kplus_"+sinksrc] = self.kplus_corr[sinksrc][self.t_range['kplus'][0]:self.t_range['kplus'][1]]
         return data
 
     def _make_prior(self,prior):
@@ -371,7 +315,7 @@ class fitter(object):
         new_prior = resized_prior.copy()
         if self.simult:
 
-            for corr in ['sigma','lam','proton','xi','delta','piplus','kplus']:
+            for corr in ['sigma','lam','proton','xi']:
                 new_prior[corr+'_E0'] = resized_prior[corr+'_E'][0]
                 new_prior.pop(corr+'_E', None)
 
@@ -398,54 +342,6 @@ class fitter(object):
                     new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
 
         return new_prior
-            
-
-
-class gmo_linear_model(lsqfit.MultiFitterModel):
-    '''
-    Product of the four baryon correlation functions modeled as a decaying exponential. Asymptotes to the GMO Relation ~0. 
-    TODO is the normalization coefficient the single octet relation ?? 
-
-    We treat the linear combination of the 4 baryons as a single fit parameter, then fit to 3rd? order in the taylor expansion with $/delta B$ as the overlap factor for the product correlator 
-    '''
-    def __init__(self, datatag, t, param_keys, n_states):
-        super(gmo_linear_model, self).__init__(datatag)
-        # variables for fit
-        self.t = np.array(t)
-        self.n_states = n_states
-        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
-        self.param_keys = param_keys
-
-    def fitfcn(self, p, t=None):
-        if t is None:
-            t = self.t
-        
-        d_gmo_0 = p[self.param_keys['d_gmo_0']]
-        A_0 = p[self.param_keys['A_0']]
-        delta_B = p[self.param_keys['delta_B']]
-        gmo_log_dE = p[self.param_keys['gmo_log(dE)']]
-        B_p = p[self.param_keys['proton_z']]
-        B_s = p[self.param_keys['sigma_z']]
-        B_x = p[self.param_keys['xi_z']]
-        B_l = p[self.param_keys['lam_z']]
-
-        output_gmo = A_0 * np.exp(-d_gmo_0 * t)
-        for j in range(1, self.n_states):
-            d_gmo_esc =  d_gmo_0+ np.sum([np.exp(gmo_log_dE[k]) for k in range(j)], axis=0)
-        output_gmo +=  (B_l + 1/3*B_s - 2/3*B_p - 2/3*B_x + delta_B) * np.exp(-d_gmo_esc * t)
-        
-        return output_gmo
-
-    # The prior determines the variables that will be fit by multifitter --
-    # each entry in the prior returned by this function will be fitted
-    def buildprior(self, prior, mopt=None, extend=False):
-        # Extract the model's parameters from prior.
-        return prior
-
-    def builddata(self, data):
-        # Extract the model's fit data from data.
-        # Key of data must match model's datatag!
-        return data[self.datatag]
 
 class gmo_model(lsqfit.MultiFitterModel):
     '''
@@ -687,152 +583,3 @@ class sigma_model(lsqfit.MultiFitterModel):
         # Extract the model's fit data from data.
         # Key of data must match model's datatag!
         return data[self.datatag]
-class delta_model(lsqfit.MultiFitterModel):
-    def __init__(self, datatag, t, param_keys, n_states):
-        super(delta_model, self).__init__(datatag)
-        # variables for fit
-        self.t = np.array(t)
-        self.n_states = n_states
-        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
-        self.param_keys = param_keys
-
-    def fitfcn(self, p, t=None):
-        if t is None:
-            t = self.t
-
-        # z_PS = p[self.param_keys['z_PS']]
-        # z_SS = p[self.param_keys['z_SS']]
-        z = p[self.param_keys['delta_z']]
-        # print(self.param_keys)
-        E0 = p[self.param_keys['delta_E0']]
-        log_dE = p[self.param_keys['delta_log(dE)']]
-        # wf = 0
-        output = z[0] * np.exp(-E0 * t)
-        # print(output)
-        for j in range(1, self.n_states):
-            excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
-            output = output +z[j] * np.exp(-excited_state_energy * t)
-        return output
-
-    # The prior determines the variables that will be fit by multifitter --
-    # each entry in the prior returned by this function will be fitted
-    def buildprior(self, prior, mopt=None, extend=False):
-        # Extract the model's parameters from prior.
-        return prior
-
-    def builddata(self, data):
-        # Extract the model's fit data from data.
-        # Key of data must match model's datatag!
-        return data[self.datatag]
-# Used for particles that obey bose-einstein statistics
-class pi_Model(lsqfit.MultiFitterModel):
-    def __init__(self, datatag, t, t_period, param_keys, n_states):
-        super(pi_Model, self).__init__(datatag)
-        # variables for fit
-        self.t = np.array(t)
-        self.t_period = 64
-        self.n_states = n_states
-
-        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
-        self.param_keys = param_keys
-
-
-    def fitfcn(self, p, t=None):
-
-        if t is None:
-            t = self.t
-
-        z = p[self.param_keys['piplus_z']]
-        E0 = p[self.param_keys['piplus_E0']]
-        dE = np.exp(p[self.param_keys['piplus_log(dE)']])
-        #  r += z_snk * z_src * (np.exp(-E_n*t) + np.exp(-E_n*(T-t)))
-
-        # r += z_snk * z_src * (np.exp(-E_n*t) + np.exp(-E_n*(T-t)))
-        # return r
-        output = z[0] * (np.cosh(E0 *(t-self.t_period/2)))
-        for j in range(1, self.n_states):
-            E_j = E0 + np.sum([dE[k] for k in range(j)], axis=0)
-            output = output+ z[j] *np.cosh( E_j *(t-self.t_period/2))
-        #     output = output + z[j] * np.exp( -E_j * (self.t_period-t) )
-
-        return output
-
-    # The prior determines the variables that will be fit by multifitter --
-    # each entry in the prior returned by this function will be fitted
-    def buildprior(self, prior, mopt=None, extend=False):
-        return prior
-
-
-    def builddata(self, data):
-        # Extract the model's fit data from data.
-        # Key of data must match model's datatag!
-        return data[self.datatag]
-
-
-    def fcn_effective_mass(self, p, t=None):
-        if t is None:
-            t=self.t
-
-        return np.arccosh((self.fitfcn(p, t-1) + self.fitfcn(p, t+1))/(2*self.fitfcn(p, t)))
-
-
-    def fcn_effective_wf(self, p, t=None):
-        if t is None:
-            t=self.t
-        return 1 / np.cosh(self.fcn_effective_mass(p, t)*(t - self.t_period/2)) * self.fitfcn(p, t)
-
-class kplus_Model(lsqfit.MultiFitterModel):
-    def __init__(self, datatag, t, t_period, param_keys, n_states):
-        super(kplus_Model, self).__init__(datatag)
-        # variables for fit
-        self.t = np.array(t)
-        self.t_period = t_period
-        self.n_states = n_states
-
-        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
-        self.param_keys = param_keys
-
-
-    def fitfcn(self, p, t=None):
-
-        if t is None:
-            t = self.t
-
-        z = p[self.param_keys['kplus_z']]
-        E0 = p[self.param_keys['kplus_E0']]
-        dE = np.exp(p[self.param_keys['kplus_log(dE)']])
-
-        output = z[0] * (np.cosh(E0 *(t-self.t_period/2)))
-        for j in range(1, self.n_states):
-            E_j = E0 + np.sum([dE[k] for k in range(j)], axis=0)
-            output = output+ z[j] *np.cosh( E_j *(t-self.t_period/2))
-        #     output = output + z[j] * np.exp( -E_j * (self.t_period-t) )
-
-        return output
-
-    # The prior determines the variables that will be fit by multifitter --
-    # each entry in the prior returned by this function will be fitted
-    def buildprior(self, prior, mopt=None, extend=False):
-        return prior
-
-
-    def builddata(self, data):
-        # Extract the model's fit data from data.
-        # Key of data must match model's datatag!
-        return data[self.datatag]
-
-
-    def fcn_effective_mass(self, p, t=None):
-        if t is None:
-            t=self.t
-
-        return np.arccosh((self.fitfcn(p, t-1) + self.fitfcn(p, t+1))/(2*self.fitfcn(p, t)))
-
-
-    def fcn_effective_wf(self, p, t=None):
-        if t is None:
-            t=self.t
-        return 1 / np.cosh(self.fcn_effective_mass(p, t)*(t - self.t_period/2)) * self.fitfcn(p, t)
-
-
-

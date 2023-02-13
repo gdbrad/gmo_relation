@@ -1,3 +1,4 @@
+from math import isnan
 import tqdm
 import h5py as h5
 import numpy as np
@@ -72,11 +73,8 @@ def main():
     lam_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='lambda_z')
     xi_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='xi_z')
     sigma_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='sigma_p')
-    piplus_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='piplus')
-    kplus_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='kplus')
-    delta_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='delta_pp')
-    gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'],log=False)
-    print(type(gmo_ratio_raw))
+    gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'])
+    print(gmo_ratio_raw)
     raw_corr['proton'] = nucleon_corr
     raw_corr['lam'] = lam_corr
     raw_corr['sigma'] = sigma_corr
@@ -86,7 +84,7 @@ def main():
     prior_nucl = {}
     prior = {}
     # prior_xi = {}
-    states= p_dict['gmo_states_all']
+    states= p_dict['gmo_states']
     newlist = [x for x in states]
     for x in newlist:
         path = os.path.normpath("./priors/{0}/{1}/prior_nucl.csv".format(p_dict['abbr'],x))
@@ -105,7 +103,7 @@ def main():
         prior_xi = {k:v for k,v in prior.items() if 'xi' in k}
         # print(new_d)
         model_type = 'xi'
-        xi_ = fa.fit_ensemble(t_range=p_dict
+        xi_ = fa.fit_analysis(t_range=p_dict
         ['t_range'],t_period=64, n_states=p_dict['n_states'],prior=prior_xi,
         nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=xi_corr,
         sigma_corr_data=None,delta_corr_data=None,gmo_corr_data=None,
@@ -197,29 +195,17 @@ def main():
     # perform fits to 4 baryons simultaneously WITHOUT inclusion of gmo ratio corr data #
     if args.fit_type == 'simult_baryons':
         model_type = 'simult_baryons'
-        gmo_ = fa.fit_ensemble(t_range=p_dict
-        ['t_range'],simult=True,t_period=64,states=p_dict['gmo_states_all'], n_states=p_dict['n_states'],prior=prior,
+        gmo_ = fa.fit_analysis(t_range=p_dict
+        ['t_range'],simult=True,t_period=64,states=p_dict['gmo_states'],p_dict=p_dict, n_states=p_dict['n_states'],prior=prior,
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,sigma_corr_data=sigma_corr,
-        delta_corr_data=None,gmo_corr_data=None,
-        piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
+        gmo_corr_data=None,model_type=model_type)
         print(gmo_)
         fit_out = gmo_.get_fit()
         
         out_path = 'fit_results/{0}/{1}/'.format(p_dict['abbr'],model_type)
 
         ld.pickle_out(fit_out=fit_out,out_path=out_path,species="baryon")
-        posterior = {}
-        post_out = gv.load(out_path+"fit_params")
-        posterior['lam_E0'] = post_out['p']['lam_E0']
-        posterior['lam_E1'] = np.exp(post_out['p']['lam_log(dE)'][0])
-        posterior['proton_E0'] = post_out['p']['proton_E0']
-        posterior['proton_E1'] = np.exp(post_out['p']['proton_log(dE)'][0])
-        posterior['sigma_E0'] = post_out['p']['sigma_E0']
-        posterior['sigma_E1'] = np.exp(post_out['p']['sigma_log(dE)'][0])
-        posterior['xi_E0'] = post_out['p']['xi_E0']
-        posterior['xi_E1'] = np.exp(post_out['p']['xi_log(dE)'][0])
-        
-        print(posterior)
+        ld.print_posterior(out_path=out_path)
         if args.pdf:
             gmo_.make_plots(model_type=model_type,p_dict=p_dict, pdf=True,fig_name = None,show_all=True)
         # fa.resample_corr(raw_corr=raw_corr)
@@ -251,7 +237,7 @@ def main():
 
     if args.fit_type == 'simult_baryons_gmo':
         model_type = 'simult_baryons_gmo'
-        gmo_ = fa.fit_ensemble(t_range=p_dict
+        gmo_ = fa.fit_analysis(t_range=p_dict
         ['t_range'],p_dict=p_dict,t_period=64,states=p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,simult=True,
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
         sigma_corr_data=sigma_corr,delta_corr_data=None,gmo_corr_data=gmo_ratio_raw,
@@ -281,68 +267,64 @@ def main():
             '''
             ncfg = nucleon_corr['PS'].shape[0]
             ncfg_gmo = gmo_ratio_raw['PS'].shape[0]
-
-
             bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=100)
             bs_list_gmo = bs.get_bs_list(Ndata=ncfg_gmo,Nbs=100)
             def resample_correlator(raw_corr,bs_list, n,gmo=None):
                 if gmo:
                     resampled_raw_corr_data = ({key : raw_corr[key][bs_list_gmo[n, :]]
                 for key in raw_corr.keys()})
-
                 else:
                     resampled_raw_corr_data = ({key : raw_corr[key][bs_list[n, :], :]
                 for key in raw_corr.keys()})
                 resampled_corr_gv = resampled_raw_corr_data
                 return resampled_corr_gv
+
+            def remove_nans(d):
+                for key in d.keys():
+                    if type(d[key]) == float and isnan(d[key]):
+                        del d[key]
+                    elif type(d[key]) == gv.BufferDict():
+                        remove_nans(d[key])
             
-            fit_parameters_keys = sorted(fit_out.p.keys()) # eg, 'wf_ps', 'E0', ..
-            output = {key : [] for key in fit_parameters_keys}
+            prelim_fit_keys = sorted(fit_out.p.keys()) 
+            output = {key : [] for key in prelim_fit_keys}
             bs_N = 50
 
             for j in tqdm.tqdm(range(bs_N), desc='bootstrap'):
-
-            # Discard gvars created between gv.switch_gvar() 
-            # and gv.restore_gvar(). All gvars used in this block 
-            # must be created in this block and cannot be accessed
-            # outside it (attempting otherwise will lead to a 
-            # segmentation fault). Using gv.switch_gvar() / 
-            # gv.restore_gvar() will significantly improve performance,
-            # especially if bs_N >> 100
                 gv.switch_gvar() 
-                nucleon_bs = resample_correlator(nucleon_corr,bs_list=bs_list,n=j)
-                xi_bs = resample_correlator(xi_corr,bs_list=bs_list,n=j)
-                lam_bs = resample_correlator(lam_corr,bs_list=bs_list,n=j)
-                sigma_bs = resample_correlator(sigma_corr,bs_list=bs_list,n=j)
+                nucleon_bs  = resample_correlator(nucleon_corr,bs_list=bs_list,n=j)
+                xi_bs       = resample_correlator(xi_corr,bs_list=bs_list,n=j)
+                lam_bs      = resample_correlator(lam_corr,bs_list=bs_list,n=j)
+                sigma_bs    = resample_correlator(sigma_corr,bs_list=bs_list,n=j)
                 gmo_bs_corr = resample_correlator(gmo_ratio_raw,bs_list=bs_list_gmo,n=j,gmo=True)
-                gmo_array  = np.asarray(gmo_bs_corr)
-                gmo_new = gv.BufferDict()
-                for x in gmo_bs_corr.values():
-                    if isinstance(x,float):
-                        gmo_new.append(x)
+                gmo_new     = gv.BufferDict()
+                for key in gmo_bs_corr.keys():
+
+                    gmo_new[key] = gv.filter(gmo_bs_corr[key], gv.mean)
+                    print(gmo_new[key].dtype)
+                    if type(gmo_new[key]) == float and isnan(gmo_new[key]):
+                        del gmo_new[key]
+                # gmo_new = remove_nans(gmo_new)
                 print(gmo_new)
                     
                 # make fit with resampled correlators
-                gmo_bs = fa.fit_ensemble(t_range=p_dict
+                gmo_bs = fa.fit_analysis(t_range=p_dict
                 ['t_range'],t_period=64,simult=True, p_dict=p_dict, states= p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,
                 nucleon_corr_data=nucleon_bs,lam_corr_data=lam_bs, xi_corr_data=xi_bs,
-                sigma_corr_data=sigma_bs,delta_corr_data=None,gmo_corr_data=gmo_bs_corr
-                ,
+                sigma_corr_data=sigma_bs,delta_corr_data=None,gmo_corr_data=gmo_new,
                 piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
                 temp_fit = gmo_bs.get_fit()
                 print(temp_fit)
 
-                # for key in fit_parameters_keys:
-                #     # Save the best estimate for the central value 
-                #     # of each parameter of each fit
-                #     p = temp_fit.pmean[key]
-                #     output[key].append(p)
+                for key in prelim_fit_keys:
+                    p = temp_fit.pmean[key]
+                    output[key].append(p)
 
                 gv.restore_gvar()
 
                 # print results -- should be similar to previous results
-            # table = gv.dataset.avg_data(output, bstrap=True)
-            # print(gv.tabulate(table))
+            table = gv.dataset.avg_data(output, bstrap=True)
+            print(gv.tabulate(table))
 
 
     ''' xpt routines 
