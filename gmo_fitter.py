@@ -193,6 +193,19 @@ class fitter(object):
 
     def _make_models_simult_fit(self):
         models = np.array([])
+
+        if self.model_type == 'gmo_direct':
+            for sink in list(self.gmo_ratio_corr.keys()):
+                param_keys = {
+                    'gmo_E0'    : 'gmo_E0',
+                    'z'         : 'gmo_z_'+sink,
+                    'log(dE)' : 'gmo_log(dE)',
+                                    }
+                models = np.append(models,
+                        GMO_direct(datatag="gmo_ratio_"+sink,
+                        t=list(range(self.t_range['gmo_ratio'][0], self.t_range['gmo_ratio'][1])),
+                        param_keys=param_keys, n_states=self.n_states['gmo_ratio']))
+
         if self.model_type == 'simult_baryons_gmo':
             for sink in list(self.gmo_ratio_corr.keys()):
 
@@ -220,9 +233,6 @@ class fitter(object):
             for sink in list(self.nucleon_corr.keys()):
                 param_keys = {
                     'proton_E0'      : 'proton_E0',
-                    # 'E1'      : 'E1',
-                    # 'E2'      : 'E2',
-                    # 'E3'      : 'E3',
                     'proton_log(dE)' : 'proton_log(dE)',
                     'proton_z'      : 'proton_z_'+sink 
                     # 'z_PS'      : 'z_PS',
@@ -236,9 +246,6 @@ class fitter(object):
             for sink in list(self.lam_corr.keys()):
                 param_keys = {
                     'lam_E0'      : 'lam_E0',
-                    # 'E1'      : 'E1',
-                    # 'E2'      : 'E2',
-                    # 'E3'      : 'E3',
                     'lam_log(dE)' : 'lam_log(dE)',
                     'lam_z'      : 'lam_z_'+sink 
                     # 'z_PS'      : 'z_PS',
@@ -252,9 +259,6 @@ class fitter(object):
             for sink in list(self.xi_corr.keys()):
                 param_keys = {
                     'xi_E0'      : 'xi_E0',
-                    # 'E1'      : 'E1',
-                    # 'E2'      : 'E2',
-                    # 'E3'      : 'E3',
                     'xi_log(dE)' : 'xi_log(dE)',
                     'xi_z'      : 'xi_z_'+sink 
                     # 'z_PS'      : 'z_PS',
@@ -269,12 +273,8 @@ class fitter(object):
             for sink in list(self.sigma_corr.keys()):
                 param_keys = {
                     'sigma_E0'      : 'sigma_E0',
-                    # 'E1'      : 'E1',
-                    # 'E2'      : 'E2',
-                    # 'E3'      : 'E3',
                     'sigma_log(dE)' : 'sigma_log(dE)',
                     'sigma_z'      : 'sigma_z_'+sink 
-                    # 'z_PS'      : 'z_PS',
                 }   
                 models = np.append(models,
                         sigma_model(datatag="sigma_"+sink,
@@ -342,6 +342,45 @@ class fitter(object):
                     new_prior[corr+'_log(dE)'][j] = np.log(temp_gvar)
 
         return new_prior
+
+class GMO_direct(lsqfit.MultiFitterModel):
+    def __init__(self, datatag, t, param_keys, n_states):
+        super(GMO_direct, self).__init__(datatag)
+        # variables for fit
+        self.t = np.array(t)
+        self.n_states = n_states
+        # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
+        self.param_keys = param_keys
+
+    def fitfcn(self, p, t=None):
+        if t is None:
+            t = self.t
+        z = p[self.param_keys['z']]
+        E0 = p[self.param_keys['gmo_E0']]
+        log_dE = p[self.param_keys['log(dE)']]
+        output = z[0] * np.exp(-E0 * t)
+        for j in range(1, self.n_states):
+            excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
+            output = output +z[j] * np.exp(-excited_state_energy * t)
+        return output
+
+    def fcn_effective_mass(self, p, t=None):
+        if t is None:
+            t=self.t
+
+        return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
+
+
+    # The prior determines the variables that will be fit by multifitter --
+    # each entry in the prior returned by this function will be fitted
+    def buildprior(self, prior, mopt=None, extend=False):
+        # Extract the model's parameters from prior.
+        return prior
+
+    def builddata(self, data):
+        # Extract the model's fit data from data.
+        # Key of data must match model's datatag!
+        return data[self.datatag]
 
 class gmo_model(lsqfit.MultiFitterModel):
     '''

@@ -63,7 +63,7 @@ def bs_corrs(corr, Nbs, Mbs=None, seed=None, return_bs_list=False, return_mbs=Fa
                 corr_bs, bs_list.shape = (Nbs, Mbs)
     '''
 
-    Ncfg = corr.shape[0]
+    Ncfg = corr['proton_PS'].shape[0]
     if Mbs:
         m_bs = Mbs
     else:
@@ -78,7 +78,7 @@ def bs_corrs(corr, Nbs, Mbs=None, seed=None, return_bs_list=False, return_mbs=Fa
     # make BS corrs
     corr_bs = np.zeros(tuple([Nbs, m_bs]) + corr.shape[1:], dtype=corr.dtype)
     for bs in range(Nbs):
-        corr_bs[bs] = corr[bs_list[bs]]
+            corr_bs[bs] = corr[bs_list[bs]]
 
     # if return_mbs, return (Nbs, Mbs, Nt, ...) array
     # otherwise, return mean over Mbs axis

@@ -113,36 +113,24 @@ class fit_analysis(object):
             lam_corr = None
             sigma_corr = self.sigma_corr_gv
             xi_corr = None
-            piplus_corr = None
-            kplus_corr = None
-            delta_corr = None
 
         elif model_type == "xi":
             nucleon_corr = None
             lam_corr = None
             sigma_corr = None
             xi_corr = self.xi_corr_gv
-            piplus_corr = None
-            kplus_corr = None
-            delta_corr = None
 
         elif model_type == "lam":
             nucleon_corr = None
             lam_corr = self.lam_corr_gv
             sigma_corr = None
             xi_corr = None
-            piplus_corr = None
-            kplus_corr = None
-            delta_corr = None
 
         elif model_type == "proton":
             nucleon_corr = self.nucleon_corr_gv
             lam_corr = None
             sigma_corr = None
             xi_corr = None
-            piplus_corr = None
-            kplus_corr = None
-            delta_corr = None
             gmo_ratio_corr = None
 
         elif model_type == "simult_baryons":
@@ -150,20 +138,13 @@ class fit_analysis(object):
             lam_corr = self.lam_corr_gv
             sigma_corr = self.sigma_corr_gv
             xi_corr = self.xi_corr_gv
-            delta_corr = None
-            piplus_corr= None
-            kplus_corr =None
-            delta_corr =None
             gmo_ratio_corr = None
 
-        elif model_type == "gmo_ratio":
+        elif model_type == "gmo_direct":
             nucleon_corr = None
             lam_corr = None
             sigma_corr = None
             xi_corr = None
-            piplus_corr = None
-            kplus_corr = None
-            delta_corr= None
             gmo_ratio_corr = self.gmo_corr_gv
 
         elif model_type == "simult_baryons_gmo":
@@ -172,16 +153,12 @@ class fit_analysis(object):
             sigma_corr = self.sigma_corr_gv
             xi_corr = self.xi_corr_gv
             gmo_ratio_corr = self.gmo_corr_gv
-            delta_corr= None
-            piplus_corr = None
-            kplus_corr = None
-
-
 
         else:
             return None 
 
-        return fitter(n_states=self.n_states, prior=self.prior, p_dict=self.p_dict, t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
+        return fitter(n_states=self.n_states, states=self.states,prior=self.prior,simult=self.simult, p_dict=self.p_dict, 
+                        t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
                       nucleon_corr=nucleon_corr,lam_corr=lam_corr,xi_corr=xi_corr,sigma_corr=sigma_corr,gmo_ratio_corr=gmo_ratio_corr)._make_models_simult_fit()
 
     def _generate_data_from_fit(self, t, t_start=None, t_end=None, model_type=None, n_states=None):
@@ -281,7 +258,7 @@ class fit_analysis(object):
         plt.xlabel('$t$', fontsize = 24)
         plt.ylabel('$M^{eff}_{GMO}$', fontsize = 24)
         fig = plt.gcf()
-        plt.savefig(fig_name)
+        # plt.savefig(fig_name)
         if show_plot == True: plt.show()
         else: plt.close()
 
@@ -354,7 +331,7 @@ class fit_analysis(object):
         # if show_plot == True: plt.show()
         # else: plt.close()
         fig = plt.gcf()
-        plt.savefig(fig_name)
+        # plt.savefig(fig_name)
         # plt.show()
         return fig
 
@@ -541,7 +518,7 @@ class fit_analysis(object):
         plt.xlabel('$t$', fontsize = 24)
         plt.ylabel('$M^{eff}_{baryon}$', fontsize = 24)
         fig = plt.gcf()
-        plt.savefig(fig_name)
+        # plt.savefig(fig_name)
         if show_plot == True: plt.show()
         else: plt.close()
 
@@ -747,7 +724,7 @@ class fit_analysis(object):
     def return_best_fit_info(self):
         plt.axis('off')
         # these are matplotlib.patch.Patch properties
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        props = dict(boxstyle='round', facecolor='grey', alpha=0.5)
 
         # place a text box in upper left in axes coords
         #plt.text(0.05, 0.05, str(fit_ensemble.get_fit(fit_ensemble.best_fit_time_range[0], fit_ensemble.best_fit_time_range[1])),
@@ -786,62 +763,56 @@ class fit_analysis(object):
 
         return plots
 
-
-    # def gmo_xpt_extrapolation(self):
-
-
-
-
-
     def __str__(self):
         output = "Model Type:" + str(self.model_type) 
         output = output+"\n"
 
-        if self.nucleon_corr_gv is not None:
-            output = output + "\t N_{corr} = "+str(self.n_states[self.model_type])+"\t"
+        # if self.nucleon_corr_gv is not None:
+        output = output + "\t N_{corr} = "+str(self.n_states[self.model_type])+"\t"
 
         output = output+"\n"
 
-        if self.nucleon_corr_gv is not None:
-            output = output + "\t t_{corr} = "+str(self.t_range[self.model_type])
+        # if self.nucleon_corr_gv is not None:
+        output = output + "\t t_{corr} = "+str(self.t_range[self.model_type])
         
         # output += ma.GMO()
         output = output+"\n"
         output += "Fit results: \n"
 
         temp_fit = self.get_fit()
-        output += "\t GMO rln = " 
-        output= output+  str(temp_fit.p['lam_E0'] + 1/3* temp_fit.p['sigma_E0'] - 2/3*temp_fit.p['proton_E0'] - 2/3*temp_fit.p['xi_E0'])
-        output = output+"\n"
-        output += "\t M_4 posterior =    " 
-        output += str(temp_fit.p['lam_E0'] - 3* temp_fit.p['sigma_E0'] + temp_fit.p['proton_E0'] + temp_fit.p['xi_E0'])
-        output = output+"\n"
-        output += "\t Centroid posterior =    " 
-        output += str(1/8*temp_fit.p['lam_E0'] + 3/8* temp_fit.p['sigma_E0'] + 1/4*temp_fit.p['proton_E0'] + 1/4*temp_fit.p['xi_E0'])
-        output = output+"\n"
-        output+= str("\t lam_E0=  ")
-        output+= str(temp_fit.p['lam_E0'])
-        output = output+"\n" 
-        output += str("\t 1st e.s:  ")
-        output += str(np.exp(temp_fit.p['lam_log(dE)'][0]+temp_fit.p['lam_E0']))
-        output = output+"\n"
-        output+= str("\t proton_E0=  ")
-        output+= str(temp_fit.p['proton_E0'])
-        output = output+"\n"
-        output += str("\t 1st e.s:  ")
-        output += str(np.exp(temp_fit.p['proton_log(dE)'][0]))
-        output+= "\n"
-        output+= str("\t xi_E0=  ")
-        output += str(temp_fit.p['xi_E0'])
-        output = output+"\n"
-        output += str("\t 1st e.s:   ")
-        output += str(np.exp(temp_fit.p['xi_log(dE)'][0]))
-        output = output+"\n"
-        output+= str("\t sigma_E0=  ")
-        output += str(temp_fit.p['sigma_E0'])
-        output+= "\n"
-        output += str("\t 1st e.s:  ")
-        output += str(np.exp(temp_fit.p['sigma_log(dE)'][0]))
-        output+= "\n"
+        if self.model_type != 'gmo_direct':
+            output += "\t GMO rln = " 
+            output= output+  str(temp_fit.p['lam_E0'] + 1/3* temp_fit.p['sigma_E0'] - 2/3*temp_fit.p['proton_E0'] - 2/3*temp_fit.p['xi_E0'])
+            output = output+"\n"
+            output += "\t M_4 posterior =    " 
+            output += str(temp_fit.p['lam_E0'] - 3* temp_fit.p['sigma_E0'] + temp_fit.p['proton_E0'] + temp_fit.p['xi_E0'])
+            output = output+"\n"
+            output += "\t Centroid posterior =    " 
+            output += str(1/8*temp_fit.p['lam_E0'] + 3/8* temp_fit.p['sigma_E0'] + 1/4*temp_fit.p['proton_E0'] + 1/4*temp_fit.p['xi_E0'])
+            output = output+"\n"
+            output+= str("\t lam_E0=  ")
+            output+= str(temp_fit.p['lam_E0'])
+            output = output+"\n" 
+            output += str("\t 1st e.s:  ")
+            output += str(np.exp(temp_fit.p['lam_log(dE)'][0]+temp_fit.p['lam_E0']))
+            output = output+"\n"
+            output+= str("\t proton_E0=  ")
+            output+= str(temp_fit.p['proton_E0'])
+            output = output+"\n"
+            output += str("\t 1st e.s:  ")
+            output += str(np.exp(temp_fit.p['proton_log(dE)'][0]))
+            output+= "\n"
+            output+= str("\t xi_E0=  ")
+            output += str(temp_fit.p['xi_E0'])
+            output = output+"\n"
+            output += str("\t 1st e.s:   ")
+            output += str(np.exp(temp_fit.p['xi_log(dE)'][0]))
+            output = output+"\n"
+            output+= str("\t sigma_E0=  ")
+            output += str(temp_fit.p['sigma_E0'])
+            output+= "\n"
+            output += str("\t 1st e.s:  ")
+            output += str(np.exp(temp_fit.p['sigma_log(dE)'][0]))
+            output+= "\n"
         
         return output + str(temp_fit)

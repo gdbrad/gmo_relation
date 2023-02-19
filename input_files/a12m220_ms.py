@@ -19,7 +19,7 @@ p_dict = {
         'pi' : [5,30],
         'kplus': [8,28],
 	    'gmo_ratio':[6,15],
-        'simult_baryons': [5,14],
+        'simult_baryons': [5,15],
         'simult_baryons_gmo':[4,15]
     },
     'n_states' : {
