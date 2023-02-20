@@ -19,7 +19,7 @@ p_dict = {
         'lam' : [6, 15],
         'gmo' : [2,10], 
         'gmo_ratio':[6,15],
-        'simult_baryons': [10,25],
+        'simult_baryons': [6,15],
         'simult_baryons_gmo':[4,15],
 
     },

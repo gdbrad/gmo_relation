@@ -245,7 +245,7 @@ class fit_analysis(object):
             plt.title("gmo_ratio_eff for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(-0.01,0.02)
+        plt.ylim(0.0,0.005)
          # Get unique markers when making legend
         handles, labels = plt.gca().get_legend_handles_labels()
         temp = {}
@@ -259,14 +259,14 @@ class fit_analysis(object):
         plt.ylabel('$M^{eff}_{GMO}$', fontsize = 24)
         fig = plt.gcf()
         # plt.savefig(fig_name)
-        if show_plot == True: plt.show()
-        else: plt.close()
+        # if show_plot == True: plt.show()
+        # else: plt.close()
+        plt.close()
 
         return fig
 
-
-
-    def plot_delta_gmo(self,correlators_gv=None,model_type=None, t_plot_min = None, t_plot_max = None,fig_name=None,show_fit=None):
+    def plot_delta_gmo(self,correlators_gv=None,model_type=None, t_plot_min = None, 
+    t_plot_max = None,fig_name=None,show_fit=None):
         if t_plot_min == None: t_plot_min = 0
         # if t_plot_max == None: t_plot_max = correlators_gv[correlators_gv.keys()[0]].shape[0] - 1
         colors = np.array(['red', 'blue', 'green','magenta'])
@@ -326,13 +326,11 @@ class fit_analysis(object):
         plt.ylabel('$G_{GMO}(t)$')
         plt.grid(True)
         plt.legend()
-        # fig = plt.gcf()
-        # plt.savefig('z_test2')
-        # if show_plot == True: plt.show()
+        # if show_plot == True: plt.show() 
         # else: plt.close()
+
         fig = plt.gcf()
-        # plt.savefig(fig_name)
-        # plt.show()
+        plt.close()
         return fig
 
     def get_m_4(self,t=None):
@@ -505,7 +503,7 @@ class fit_analysis(object):
             plt.title("Simultaneous fit to 4 baryons for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(0.55,0.9)
+        # plt.ylim(0.55,0.9)
          # Get unique markers when making legend
         handles, labels = plt.gca().get_legend_handles_labels()
         temp = {}
@@ -721,7 +719,7 @@ class fit_analysis(object):
         return fig
 
 
-    def return_best_fit_info(self):
+    def return_best_fit_info(self,bs=None):
         plt.axis('off')
         # these are matplotlib.patch.Patch properties
         props = dict(boxstyle='round', facecolor='grey', alpha=0.5)
@@ -729,7 +727,7 @@ class fit_analysis(object):
         # place a text box in upper left in axes coords
         #plt.text(0.05, 0.05, str(fit_ensemble.get_fit(fit_ensemble.best_fit_time_range[0], fit_ensemble.best_fit_time_range[1])),
         #fontsize=14, horizontalalignment='left', verticalalignment='bottom', bbox=props)
-        text = self.__str__().expandtabs()
+        text = self.__str__(bs=bs).expandtabs()
         plt.text(0.0, 1.0, str(text),
                  fontsize=10, ha='left', va='top', family='monospace', bbox=props)
 
@@ -763,8 +761,11 @@ class fit_analysis(object):
 
         return plots
 
-    def __str__(self):
+    def __str__(self,bs=None):
         output = "Model Type:" + str(self.model_type) 
+        output = output+"\n"
+        if bs:
+            output = output +"\t bs: True" 
         output = output+"\n"
 
         # if self.nucleon_corr_gv is not None:

@@ -46,7 +46,7 @@ def G_gmo(file_h5,abbr):
     for smr in get_raw_corr(file_h5=file_h5, abbr=abbr,particle='proton'): 
         for part in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
             temp[(part, smr)] = get_raw_corr(file_h5=file_h5, abbr=abbr,particle=part)[smr]
-    temp = gv.dataset.avg_data(temp,bstrap=True)
+    temp = gv.dataset.avg_data(temp)
 
     output = {}
     for smr in get_raw_corr(file_h5=file_h5, abbr=abbr,particle='proton'):
@@ -85,13 +85,15 @@ def G_gmo_bs(file_h5,abbr,bsN,bs_list):
         for src_snk in ['PS', 'SS']:
             gmo['gmo_'+src_snk][str(n)] = data['lambda_z_'+src_snk][n] *np.power(data['sigma_p_'+src_snk][n], 1/3) *np.power(data['proton_'+src_snk][n], -2/3) * np.power(data['xi_z_'+src_snk][n], -2/3)
     # hacky way to eliminate the indexing done above, there is certainly a cleaner way to do #
-    Samples_ps= gmo['gmo_PS']
-    Samples_ss= gmo['gmo_SS']
-    vals_ps = np.fromiter(Samples_ps.values(), dtype=float)
-    vals_ss = np.fromiter(Samples_ss.values(), dtype=float)
-    gmo_bs = {}
-    gmo_bs['gmo_PS'] = vals_ps
-    gmo_bs['gmo_SS'] = vals_ss
+            Samples_ps= gmo['gmo_PS']
+            Samples_ss= gmo['gmo_SS']
+            vals_ps = np.fromiter(Samples_ps.values(), dtype=float)
+            vals_ss = np.fromiter(Samples_ss.values(), dtype=float)
+            gmo_bs = {}
+            gmo_bs['gmo_PS'] = vals_ps
+            gmo_bs['gmo_SS'] = vals_ss
+    print(gmo_bs)
+        # print(gmo_bs)
     correlators = gv.dataset.avg_data(gmo_bs, bstrap=True)
 
     return correlators
