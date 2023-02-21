@@ -1,9 +1,10 @@
+import pandas as pd
 import gvar as gv 
 import h5py as h5 
 import numpy as np 
 import os 
 import bs_utils as bs 
-from _collections_abc import MutableMapping 
+
 def pickle_out(fit_out,out_path,species=None):
     if not os.path.exists(out_path):
         os.makedirs(out_path)
@@ -83,33 +84,22 @@ def G_gmo_bs(file_h5,abbr,bsN,bs_list):
             for baryon in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
                 data[baryon+'_'+src_snk][n] = np.mean(corr_bs_copy[baryon+'_'+src_snk], axis=(0,1),dtype=object)
         for src_snk in ['PS', 'SS']:
-            gmo['gmo_'+src_snk][str(n)] = data['lambda_z_'+src_snk][n] *np.power(data['sigma_p_'+src_snk][n], 1/3) *np.power(data['proton_'+src_snk][n], -2/3) * np.power(data['xi_z_'+src_snk][n], -2/3)
+            gmo['gmo_'+src_snk][n] = data['lambda_z_'+src_snk][n] *np.power(data['sigma_p_'+src_snk][n], 1/3) *np.power(data['proton_'+src_snk][n], -2/3) * np.power(data['xi_z_'+src_snk][n], -2/3)
     # hacky way to eliminate the indexing done above, there is certainly a cleaner way to do #
-            Samples_ps= gmo['gmo_PS']
-            Samples_ss= gmo['gmo_SS']
-            vals_ps = np.fromiter(Samples_ps.values(), dtype=float)
-            vals_ss = np.fromiter(Samples_ss.values(), dtype=float)
-            gmo_bs = {}
-            gmo_bs['gmo_PS'] = vals_ps
-            gmo_bs['gmo_SS'] = vals_ss
-    print(gmo_bs)
-        # print(gmo_bs)
-    correlators = gv.dataset.avg_data(gmo_bs, bstrap=True)
+    print(gmo) 
+    #         Samples_ps= gmo['gmo_PS']
+    #         Samples_ss= gmo['gmo_SS']
+    #         iterable_ps = (Samples_ps.values(),n)
+    #         vals_ps = np.fromiter(iterable_ps, dtype=float)
+    #         vals_ss = np.fromiter(Samples_ss.values(), dtype=float)
+    #         gmo_bs = {}
+    #         gmo_bs['gmo_PS'] = vals_ps
+    #         gmo_bs['gmo_SS'] = vals_ss
+    # print(vals_ps.size())
+    #     # print(gmo_bs)
+    # correlators = gv.dataset.avg_data(gmo_bs, bstrap=True)
 
-    return correlators
-
-
-def delete_keys_from_dict(dictionary, keys):
-    keys_set = set(keys)  # Just an optimization for the "if key in keys" lookup.
-
-    modified_dict = {}
-    for key, value in dictionary.items():
-        if key not in keys_set:
-            if isinstance(value, MutableMapping):
-                modified_dict[key] = delete_keys_from_dict(value, keys_set)
-            else:
-                modified_dict[key] = value  # or copy.deepcopy(value) if a copy is desired for non-dicts.
-    return modified_dict
+    return gmo
 
 def resample_correlator(raw_corr,bs_list, n):
     resampled_raw_corr_data = ({key : raw_corr[key][bs_list[n, :], :]
@@ -117,42 +107,18 @@ def resample_correlator(raw_corr,bs_list, n):
     resampled_corr_gv = resampled_raw_corr_data
     return resampled_corr_gv
 
-
-# def G_gmo(file_h5,abbr,bsN=None):
-#     if bsN is None:
-#         bsN = 50
-#     data = {}
-#     for src_snk in ['PS', 'SS']:
-#             for baryon in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
-#                 data[baryon+'_'+src_snk] = np.zeros(bsN)
-
-#     for n in range(bsN):
-#         corr_bs_copy = make_bootstrap_copy(raw_correlators, n) # a dictionary with entries for each octet baryon and src/smr combination, eg key 'nucleon_PS'
-#         for src_snk in ['PS', 'SS']:
-#             for baryon in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
-#             data['gmo_'+src_snk][n] = (
-#                 data['lambda_z_'+src_snk][n] 
-#                 * np.power(data['sigma_p_'+src_snk][n], 1/3) 
-#                 * np.power(data['proton_'+src_snk][n],-2/3)
-#                 * np.power(data['xi_z'+src_snk][n], -2/3)
-#             )
-
-#     correlators = gv.dataset.avg_data(data, bstrap=True)
-def fetch_prior(p_dict,states):
+def fetch_prior(model_type,p_dict):
 
     prior_nucl = {}
+    prior = {}
+    # prior_xi = {}
+    states= p_dict[str(model_type)]
     newlist = [x for x in states]
-    for i,x in enumerate(newlist):
+    for x in newlist:
         path = os.path.normpath("./priors/{0}/{1}/prior_nucl.csv".format(p_dict['abbr'],x))
         df = pd.read_csv(path, index_col=0).to_dict()
         for key in list(df.keys()):
             length = int(np.sqrt(len(list(df[key].values()))))
             prior_nucl[key] = list(df[key].values())[:length]
-        prior = {}
-        prior[x] = {}
-        prior[x] = gv.gvar(prior_nucl)
-        print(prior)
-        # prior = {**prior_nucl}
-        # prior_nucl = gv.BufferDict()
-        # prior[x] = prior_nucl
+        prior = gv.gvar(prior_nucl)
     return prior

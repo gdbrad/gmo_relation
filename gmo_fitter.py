@@ -194,40 +194,6 @@ class fitter(object):
     def _make_models_simult_fit(self):
         models = np.array([])
 
-        if self.model_type == 'gmo_direct':
-            for sink in list(self.gmo_ratio_corr.keys()):
-                param_keys = {
-                    'gmo_E0'    : 'gmo_E0',
-                    'z'         : 'gmo_z_'+sink,
-                    'log(dE)' : 'gmo_log(dE)',
-                                    }
-                models = np.append(models,
-                        GMO_direct(datatag="gmo_ratio_"+sink,
-                        t=list(range(self.t_range['gmo_ratio'][0], self.t_range['gmo_ratio'][1])),
-                        param_keys=param_keys, n_states=self.n_states['gmo_ratio']))
-
-        if self.model_type == 'simult_baryons_gmo':
-            for sink in list(self.gmo_ratio_corr.keys()):
-
-                param_keys = {
-                    'gmo_E0'    : 'gmo_E0',
-                    'sigma_E0'  : 'sigma_E0',
-                    'xi_E0'     : 'xi_E0',
-                    'lam_E0'    : 'lam_E0',
-                    'proton_E0' : 'proton_E0',
-                    'p_log(dE)' : 'proton_log(dE)',
-                    'x_log(dE)' : 'xi_log(dE)',
-                    's_log(dE)' : 'sigma_log(dE)',
-                    'l_log(dE)' : 'lam_log(dE)',
-                    'proton_z'  : 'proton_z_'+sink,
-                    'lam_z'     : 'lam_z_'+sink,
-                    'xi_z'      : 'xi_z_'+sink,
-                    'sigma_z'   : 'sigma_z_'+sink 
-                                    }
-                models = np.append(models,
-                        gmo_model(datatag="gmo_ratio_"+sink,
-                        t=list(range(self.t_range['gmo_ratio'][0], self.t_range['gmo_ratio'][1])),
-                        param_keys=param_keys, n_states=self.n_states['gmo_ratio']))
         if self.nucleon_corr is not None:
             # if self.mutliple_smear == False:
             for sink in list(self.nucleon_corr.keys()):
@@ -281,6 +247,41 @@ class fitter(object):
                         t=list(range(self.t_range['sigma'][0], self.t_range['sigma'][1])),
                         param_keys=param_keys, n_states=self.n_states['sigma']))
 
+
+        if self.model_type == 'gmo_direct':
+            for sink in list(self.gmo_ratio_corr.keys()):
+                param_keys = {
+                    'gmo_E0'    : 'gmo_E0',
+                    'z'         : 'gmo_z_'+sink,
+                    'log(dE)' : 'gmo_log(dE)',
+                                    }
+                models = np.append(models,
+                        GMO_direct(datatag="gmo_ratio_"+sink,
+                        t=list(range(self.t_range['gmo_ratio'][0], self.t_range['gmo_ratio'][1])),
+                        param_keys=param_keys, n_states=self.n_states['gmo_ratio']))
+
+        if self.model_type == 'simult_baryons_gmo':
+            for sink in list(self.gmo_ratio_corr.keys()):
+
+                param_keys = {
+                    'sigma_E0'  : 'sigma_E0',
+                    'xi_E0'     : 'xi_E0',
+                    'lam_E0'    : 'lam_E0',
+                    'proton_E0' : 'proton_E0',
+                    'p_log(dE)' : 'proton_log(dE)',
+                    'x_log(dE)' : 'xi_log(dE)',
+                    's_log(dE)' : 'sigma_log(dE)',
+                    'l_log(dE)' : 'lam_log(dE)',
+                    'proton_z'  : 'proton_z_'+sink,
+                    'lam_z'     : 'lam_z_'+sink,
+                    'xi_z'      : 'xi_z_'+sink,
+                    'sigma_z'   : 'sigma_z_'+sink 
+                                    }
+                models = np.append(models,
+                        gmo_model(datatag="gmo_ratio_"+sink,
+                        t=list(range(self.t_range['gmo_ratio'][0], self.t_range['gmo_ratio'][1])),
+                        param_keys=param_keys, n_states=self.n_states['gmo_ratio']))
+        
 
         return models
 
@@ -457,15 +458,11 @@ class proton_model(lsqfit.MultiFitterModel):
     def fitfcn(self, p, t=None):
         if t is None:
             t = self.t
-        # z_PS = p[self.param_keys['z_PS']]
-        # z_SS = p[self.param_keys['z_SS']]
         z = p[self.param_keys['proton_z']]
         # print(self.param_keys)
         E0 = p[self.param_keys['proton_E0']]
         log_dE = p[self.param_keys['proton_log(dE)']]
-        # wf = 0
         output = z[0] * np.exp(-E0 * t)
-        # print(output)
         for j in range(1, self.n_states):
             excited_state_energy = E0 + np.sum([np.exp(log_dE[k]) for k in range(j)], axis=0)
             output = output +z[j] * np.exp(-excited_state_energy * t)
@@ -476,6 +473,13 @@ class proton_model(lsqfit.MultiFitterModel):
             t=self.t
 
         return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
+
+    def fcn_effective_wf(self, p, t=None):
+        if t is None:
+            t=self.t
+        t = np.array(t)
+        
+        return np.exp(self.fcn_effective_mass(p, t)*t) * self.fitfcn(p, t)
 
 
     # The prior determines the variables that will be fit by multifitter --

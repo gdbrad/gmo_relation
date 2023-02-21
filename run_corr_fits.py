@@ -77,32 +77,15 @@ def main():
     sigma_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='sigma_p')
     gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'])
     ncfg = xi_corr['PS'].shape[0]
-    bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=50)
-    gmo_bs = ld.G_gmo_bs(file,p_dict['abbr'],bsN=5,bs_list=bs_list)
-    print(gmo_bs,"gmo")
     raw_corr['proton'] = nucleon_corr
     raw_corr['lam'] = lam_corr
     raw_corr['sigma'] = sigma_corr
     raw_corr['xi'] = xi_corr
     raw_corr['gmo_ratio'] = gmo_ratio_raw
-    # set priors from csv priors
-    prior_nucl = {}
-    prior = {}
-    # prior_xi = {}
-    states= p_dict['gmo_states']
-    newlist = [x for x in states]
-    for x in newlist:
-        path = os.path.normpath("./priors/{0}/{1}/prior_nucl.csv".format(p_dict['abbr'],x))
-        df = pd.read_csv(path, index_col=0).to_dict()
-        for key in list(df.keys()):
-            length = int(np.sqrt(len(list(df[key].values()))))
-            prior_nucl[key] = list(df[key].values())[:length]
-        prior = gv.gvar(prior_nucl)
-
-    print(prior)
 
     if args.fit_type == 'simult_baryons':
-        model_type = 'simult_baryons'
+        model_type = args.fit_type
+        prior = ld.fetch_prior(model_type,p_dict)
         sim_baryons = fa.fit_analysis(t_range=p_dict
         ['t_range'],simult=True,t_period=64,states=p_dict['gmo_states'],p_dict=p_dict, n_states=p_dict['n_states'],prior=prior,
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,sigma_corr_data=sigma_corr,
@@ -116,7 +99,9 @@ def main():
         print(ld.print_posterior(out_path=out_path))
         if args.pdf:
             plot1 = sim_baryons.return_best_fit_info()
-            plot2 = sim_baryons.plot_effective_mass(t_plot_min=0, t_plot_max=20,model_type=model_type, 
+            plot2 = sim_baryons.plot_effective_mass(t_plot_min=0, t_plot_max=40,model_type=model_type, 
+            show_plot=True,show_fit=True)
+            plot3 = sim_baryons.plot_effective_wf(model_type=model_type, t_plot_min=0, t_plot_max=40, 
             show_plot=True,show_fit=True)
 
             output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
@@ -124,117 +109,16 @@ def main():
             with PdfPages(output_pdf) as pp:
                 pp.savefig(plot1)
                 pp.savefig(plot2)
+                # pp.savefig(plot3)
+
             output_pdf.close()
     
     # 1. perform fits to individual baryon correlators #
 
-    if args.fit_type == 'xi':
-        prior_xi = {k:v for k,v in prior.items() if 'xi' in k}
-        # print(new_d)
-        model_type = 'xi'
-        xi_ = fa.fit_analysis(t_range=p_dict
-        ['t_range'],t_period=64, n_states=p_dict['n_states'],prior=prior_xi,
-        nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=xi_corr,
-        sigma_corr_data=None,delta_corr_data=None,gmo_corr_data=None,
-        piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
-        # print(xi_)
-        fit_out = xi_.get_fit()
-        print(fit_out.formatall(maxline=True))
-        if args.pdf:
-            plot1 = xi_.return_best_fit_info()
-            plot2 = xi_.plot_effective_mass(t_plot_min=5, t_plot_max=20,ylim=(0.76,0.85), model_type = model_type,show_plot=True,show_fit=True)
 
-            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
-            output_pdf = output_dir+".pdf"
-            with PdfPages(output_pdf) as pp:
-                pp.savefig(plot1)
-                pp.savefig(plot2)
-            output_pdf.close()
-
-    if args.fit_type == 'lam':
-        prior_lam = {k:v for k,v in prior.items() if 'lam' in k}
-        # print(new_d)
-        model_type = 'lam'
-        lam_ = fitter.fitter(t_range=p_dict
-        ['t_range'],t_period=64, n_states=p_dict['n_states'],states=['lam'],prior=prior_lam,
-        nucleon_corr=None,lam_corr=gv.dataset.avg_data(lam_corr), xi_corr=None,
-        sigma_corr=None,delta_corr=None,gmo_ratio_corr=None,
-        piplus_corr=None,kplus_corr=None,model_type=model_type)
-        # print(xi_)
-        fit_out = lam_.get_fit()
-        print(fit_out.formatall(maxline=True))
-        if args.pdf:
-            plot1 = lam_.return_best_fit_info()
-            plot2 = lam_.plot_effective_mass(tmin=None, tmax=None, ylim=None, show_plot=True,show_fit=True)
-
-            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
-            output_pdf = output_dir+".pdf"
-            with PdfPages(output_pdf) as pp:
-                pp.savefig(plot1)
-                pp.savefig(plot2)
-            output_pdf.close()
-
-    if args.fit_type == 'proton':
-        prior_proton = {k:v for k,v in prior.items() if 'proton' in k}
-        # print(new_d)
-        model_type = 'proton'
-        proton_ = fitter.fitter(t_range=p_dict
-        ['t_range'],t_period=64, n_states=p_dict['n_states'],states=['proton'],prior=prior_proton,
-        nucleon_corr=gv.dataset.avg_data(nucleon_corr),lam_corr=None, xi_corr=None,
-        sigma_corr=None,delta_corr=None,gmo_ratio_corr=None,
-        piplus_corr=None,kplus_corr=None,model_type=model_type)
-        fit_out = proton_.get_fit()
-        print(fit_out.formatall(maxline=True))
-        print(str(np.exp(fit_out.p['proton_log(dE)'][0])))
-        if args.pdf:
-            plot1 = proton_.return_best_fit_info()
-            plot2 = proton_.plot_effective_mass(tmin=None, tmax=None, ylim=None, show_plot=True,show_fit=True)
-
-            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
-            output_pdf = output_dir+".pdf"
-            with PdfPages(output_pdf) as pp:
-                pp.savefig(plot1)
-                pp.savefig(plot2)
-            # output_pdf.close()
-
-    if args.fit_type == 'sigma':
-        prior_sigma = {k:v for k,v in prior.items() if 'sigma' in k}
-        # print(new_d)
-        model_type = 'sigma'
-        sigma_ = fitter.fitter(t_range=p_dict
-        ['t_range'],t_period=64, n_states=p_dict['n_states'],states=['sigma'],prior=prior_sigma,
-        nucleon_corr=None,lam_corr=None, xi_corr=None,
-        sigma_corr=gv.dataset.avg_data(sigma_corr),delta_corr=None,gmo_ratio_corr=None,
-        piplus_corr=None,kplus_corr=None,model_type=model_type)
-        # print(xi_)
-        fit_out = sigma_.get_fit()
-        print(fit_out.formatall(maxline=True))
-        if args.pdf:
-            plot1 = sigma_.return_best_fit_info()
-            plot2 = sigma_.plot_effective_mass(tmin=None, tmax=None, ylim=None, show_plot=True,show_fit=True)
-
-            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
-            output_pdf = output_dir+".pdf"
-            with PdfPages(output_pdf) as pp:
-                pp.savefig(plot1)
-                pp.savefig(plot2)
-            output_pdf.close()
-
-    if args.fit_type == 'gmo_direct':
-        model_type = 'gmo_direct'
-        prior_nucl = {}
-        prior = {}
-        # prior_xi = {}
-        states= p_dict['gmo_direct']
-        newlist = [x for x in states]
-        for x in newlist:
-            path = os.path.normpath("./priors/{0}/{1}/prior_nucl.csv".format(p_dict['abbr'],x))
-            df = pd.read_csv(path, index_col=0).to_dict()
-            for key in list(df.keys()):
-                length = int(np.sqrt(len(list(df[key].values()))))
-                prior_nucl[key] = list(df[key].values())[:length]
-            prior = gv.gvar(prior_nucl)
-
+    elif args.fit_type == 'gmo_direct':
+        model_type = args.fit_type
+        prior = ld.fetch_prior(model_type,p_dict)
         gmo_direct = fa.fit_analysis(t_range=p_dict
         ['t_range'],simult=False,t_period=64,states=p_dict['gmo_direct'],p_dict=p_dict, 
         n_states=p_dict['n_states'],prior=prior,
@@ -243,7 +127,6 @@ def main():
         print(gmo_direct)
         fit_out = gmo_direct.get_fit()
         gmo_eff_mass = gmo_direct.get_gmo_effective(gmo_ratio=gmo_ratio_raw)
-        print(gmo_eff_mass)
         if args.pdf:
             plot1 = gmo_direct.return_best_fit_info(bs=False)
             plot2 = gmo_direct.plot_delta_gmo(correlators_gv=gmo_ratio_raw,t_plot_min=0,t_plot_max=20,
@@ -263,22 +146,29 @@ def main():
             bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=bsN)
             prelim_fit_keys = sorted(fit_out.p.keys()) 
             output = {key : [] for key in prelim_fit_keys}
+            gmo_bs = ld.G_gmo_bs(file,p_dict['abbr'],bsN=bsN,bs_list=bs_list)
+            def resample_corr(bs_list,n):
+                resampled_raw_corr_data = ({key : gmo_bs[key][bs_list[n, :]]
+                for key in gmo_bs.keys()})
+                resampled_corr_gv = gv.dataset.avg_data(resampled_raw_corr_data)
+                return resampled_corr_gv
+
             for j in tqdm.tqdm(range(bsN), desc='bootstrap'):
                 gv.switch_gvar() 
-                gmo_bs = ld.G_gmo_bs(file,p_dict['abbr'],bsN=bsN,bs_list=bs_list)
-                print(gmo_bs,"jhi")
-                ld.resample_correlator(gmo_bs,bs_list=bs_list,n=bsN)
+                
+                temp_gmo_corr = resample_corr(bs_list,j)
+                print(temp_gmo_corr)
                 # make fit with resampled correlators
-                # gmo_bs_out = fa.fit_analysis(t_range=p_dict
-                # ['t_range'],t_period=64,simult=False, p_dict=p_dict, states= p_dict['gmo_direct'],n_states=p_dict['n_states'],prior=prior,
-                # nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=None,
-                # sigma_corr_data=None,gmo_corr_data=gmo_bs,model_type=model_type)
-                # temp_fit = gmo_bs_out.get_fit()
-                # print(temp_fit)
+                gmo_bs_out = fitter.fitter(t_range=p_dict
+                ['t_range'],t_period=64,simult=False, p_dict=p_dict, states= p_dict['gmo_direct'],n_states=p_dict['n_states'],prior=prior,
+                nucleon_corr=None,lam_corr=None, xi_corr=None,
+                sigma_corr=None,gmo_ratio_corr=temp_gmo_corr,model_type=model_type)
+                temp_fit = gmo_bs_out.get_fit()
+                print(temp_fit)
 
-                # for key in prelim_fit_keys:
-                #     p = temp_fit.pmean[key]
-                #     output[key].append(p)
+                for key in prelim_fit_keys:
+                    p = temp_fit.pmean[key]
+                    output[key].append(p)
 
                 gv.restore_gvar()
 
@@ -302,26 +192,43 @@ def main():
 
 
             # output_pdf.close()
-
-
-    # perform fits to 4 baryons simultaneously WITHOUT inclusion of gmo ratio corr data #
-    if args.fit_type == 'simult_baryons':
-        model_type = 'simult_baryons'
-        sim_baryons = fa.fit_analysis(t_range=p_dict
-        ['t_range'],simult=True,t_period=64,states=p_dict['gmo_states'],p_dict=p_dict, n_states=p_dict['n_states'],prior=prior,
-        nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,sigma_corr_data=sigma_corr,
-        gmo_corr_data=None,model_type=model_type)
-        print(sim_baryons)
-        fit_out = sim_baryons.get_fit()
-        
-        out_path = 'fit_results/{0}/{1}/'.format(p_dict['abbr'],model_type)
-
-        ld.pickle_out(fit_out=fit_out,out_path=out_path,species="baryon")
-        print(ld.print_posterior(out_path=out_path))
+    elif args.fit_type == 'xi':
+        prior_xi = {k:v for k,v in prior.items() if 'xi' in k}
+        # print(new_d)
+        model_type = 'xi'
+        xi_ = fa.fit_analysis(t_range=p_dict
+        ['t_range'],p_dict=p_dict,simult=False,states=['xi'], t_period=64, n_states=p_dict['n_states'],prior=prior_xi,
+        nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=xi_corr,
+        sigma_corr_data=None,gmo_corr_data=None,model_type=model_type)
+        # print(xi_)
+        fit_out = xi_.get_fit()
+        print(fit_out.formatall(maxline=True))
         if args.pdf:
-            plot1 = sim_baryons.return_best_fit_info()
-            plot2 = sim_baryons.plot_effective_mass(t_plot_min=0, t_plot_max=20,model_type=model_type, 
-            show_plot=True,show_fit=True)
+            # plot1 = xi_.return_best_fit_info()
+            plot2 = xi_.plot_effective_mass(t_plot_min=5, t_plot_max=30, model_type = model_type,show_plot=True,show_fit=True)
+
+            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
+            output_pdf = output_dir+".pdf"
+            with PdfPages(output_pdf) as pp:
+                # pp.savefig(plot1)
+                pp.savefig(plot2)
+            output_pdf.close()
+
+    elif args.fit_type == 'lam':
+        prior_lam = {k:v for k,v in prior.items() if 'lam' in k}
+        # print(new_d)
+        model_type = 'lam'
+        lam_ = fitter.fitter(t_range=p_dict
+        ['t_range'],t_period=64, n_states=p_dict['n_states'],states=['lam'],prior=prior_lam,
+        nucleon_corr=None,lam_corr=gv.dataset.avg_data(lam_corr), xi_corr=None,
+        sigma_corr=None,delta_corr=None,gmo_ratio_corr=None,
+        piplus_corr=None,kplus_corr=None,model_type=model_type)
+        # print(xi_)
+        fit_out = lam_.get_fit()
+        print(fit_out.formatall(maxline=True))
+        if args.pdf:
+            plot1 = lam_.return_best_fit_info()
+            plot2 = lam_.plot_effective_mass(tmin=None, tmax=None, ylim=None, show_plot=True,show_fit=True)
 
             output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
             output_pdf = output_dir+".pdf"
@@ -330,10 +237,56 @@ def main():
                 pp.savefig(plot2)
             output_pdf.close()
 
-    if args.fit_type == 'simult_baryons_gmo':
-        model_type = 'simult_baryons_gmo'
+    elif args.fit_type == 'proton':
+        prior_proton = {k:v for k,v in prior.items() if 'proton' in k}
+        # print(new_d)
+        model_type = 'proton'
+        proton_ = fitter.fitter(t_range=p_dict
+        ['t_range'],t_period=64, n_states=p_dict['n_states'],states=['proton'],prior=prior_proton,
+        nucleon_corr=gv.dataset.avg_data(nucleon_corr),lam_corr=None, xi_corr=None,
+        sigma_corr=None,gmo_ratio_corr=None,model_type=model_type)
+        fit_out = proton_.get_fit()
+        print(fit_out.formatall(maxline=True))
+        print(str(np.exp(fit_out.p['proton_log(dE)'][0])))
+        if args.pdf:
+            plot1 = proton_.return_best_fit_info()
+            plot2 = proton_.plot_effective_mass(tmin=None, tmax=None, ylim=None, show_plot=True,show_fit=True)
+
+            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
+            output_pdf = output_dir+".pdf"
+            with PdfPages(output_pdf) as pp:
+                pp.savefig(plot1)
+                pp.savefig(plot2)
+            # output_pdf.close()
+
+    elif args.fit_type == 'sigma':
+        prior_sigma = {k:v for k,v in prior.items() if 'sigma' in k}
+        # print(new_d)
+        model_type = 'sigma'
+        sigma_ = fitter.fitter(t_range=p_dict
+        ['t_range'],t_period=64, n_states=p_dict['n_states'],states=['sigma'],prior=prior_sigma,
+        nucleon_corr=None,lam_corr=None, xi_corr=None,
+        sigma_corr=gv.dataset.avg_data(sigma_corr),delta_corr=None,gmo_ratio_corr=None,
+        piplus_corr=None,kplus_corr=None,model_type=model_type)
+        # print(xi_)
+        fit_out = sigma_.get_fit()
+        print(fit_out.formatall(maxline=True))
+        if args.pdf:
+            plot1 = sigma_.return_best_fit_info()
+            plot2 = sigma_.plot_effective_mass(tmin=None, tmax=None, ylim=None, show_plot=True,show_fit=True)
+
+            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
+            output_pdf = output_dir+".pdf"
+            with PdfPages(output_pdf) as pp:
+                pp.savefig(plot1)
+                pp.savefig(plot2)
+            output_pdf.close()
+
+    elif args.fit_type == 'simult_baryons_gmo':
+        model_type = args.fit_type
+        prior = ld.fetch_prior(model_type,p_dict)
         gmo_ = fa.fit_analysis(t_range=p_dict
-        ['t_range'],p_dict=p_dict,t_period=64,states=p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,simult=True,
+        ['t_range'],p_dict=p_dict,t_period=64,states=p_dict['simult_baryons_gmo'],n_states=p_dict['n_states'],prior=prior,simult=True,
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
         sigma_corr_data=sigma_corr,gmo_corr_data=gmo_ratio_raw,
         model_type=model_type)
