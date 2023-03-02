@@ -2,35 +2,29 @@ import gvar as gv
 p_dict = {
     'abbr' : 'a12m130', #CHANGE THIS
     'part' : ['delta_pp', 'kplus', 'lambda_z', 'omega_m', 'piplus', 'proton', 'sigma_p', 'sigma_star_p', 'xi_star_z', 'xi_z'], 
-    'particles' : ['proton'],
-    'states' : ['sigma_p'],
+    'gmo_direct' : ['gmo'],
     'meson_states' : ['piplus','kplus'],
-    'gmo_states': ['sigma_p','lambda_z','proton','xi_z'], #states for gmo study
+    'simult_baryons': ['sigma_p','lambda_z','proton','xi_z'],
+    'simult_baryons_gmo': ['sigma_p','lambda_z','proton','xi_z'], #states for gmo study
     'gmo_states_all' : ['gmo_num','delta','sigma_p','lambda_z','proton','xi_z','piplus','kplus'],
     'srcs'     :['S'],
     'snks'     :['SS','PS'],
-    'bs_seed' : 'a12m180L',
 
    't_range' : {
-        'sigma' : [6, 15],
-        'xi' : [6, 15],
-        'proton' : [6, 15],
+        'sigma' : [5,15],
+        'xi' :  [5,15],
+        'proton' :   [5,15],
         'delta' : [6,15],
-        'lam' : [6, 15],
+        'lam' : [5,15],
         'gmo' : [2,10], 
         'pi' : [5,30],
-        'kplus': [8,40],
-        'mesons': [4,16],
-        'gmo_ratio':[6,15],
-        'simult_baryons': [6,15],
-        'simult_baryons_gmo':[4,15],
-        'simult_XSL_gmo':[4,15],
-        'simult_XSN_gmo':[4,15],
-        'simult_XNL_gmo':[4,15],
-        'simult_NSL_gmo':[4,15]
-
-
+        'kplus': [8,28],
+	    'gmo_ratio':[5,15],
+	    'gmo_direct':[10,25],
+        'simult_baryons':   [5,20],
+        'simult_baryons_gmo':[5,15]
     },
+
     'n_states' : {
         'sigma' : 2,
         'xi' :2,
@@ -41,13 +35,10 @@ p_dict = {
         'pi' : 2,
         'kplus': 2,
         'mesons':2,
-	    'gmo_ratio':2,
+        'gmo_direct':2,
+        'gmo_ratio':2,
         'simult_baryons':2,
         'simult_baryons_gmo':2,
-        'simult_XSL_gmo':2,
-        'simult_XSN_gmo':2,
-        'simult_XNL_gmo':2,
-        'simult_NSL_gmo':2
 
     },
     

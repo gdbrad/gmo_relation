@@ -76,26 +76,29 @@ def bs_corrs(corr, Nbs, Mbs=None, seed=None, return_bs_list=False, return_mbs=Fa
     bs_list = rng.integers(low=0, high=Ncfg, size=[Nbs, m_bs])
 
     # make BS corrs
-    corr_bs = np.zeros(tuple([Nbs, m_bs]) + corr.shape[1:], dtype=corr.dtype)
-    for bs in range(Nbs):
-            corr_bs[bs] = corr[bs_list[bs]]
+    for key in corr:
+        corr_bs = {}
+
+        corr_bs[key] = np.zeros(tuple([Nbs, m_bs]) + corr[key].shape[1:], dtype=corr[key].dtype)
+        for bs in range(Nbs):
+            corr_bs[key][bs] = corr[key][bs_list[bs]]
 
     # if return_mbs, return (Nbs, Mbs, Nt, ...) array
     # otherwise, return mean over Mbs axis
-    if return_mbs:
-        bs_mean   = corr_bs.mean(axis=(0,1))
-        d_corr_bs = corr_bs - bs_mean
-        corr_bs   = bs_mean + d_corr_bs * np.sqrt( m_bs / Ncfg)
-    else:
-        corr_bs   = corr_bs.mean(axis=1)
-        bs_mean   = corr_bs.mean(axis=0)
-        d_corr_bs = corr_bs - bs_mean
-        corr_bs   = bs_mean + d_corr_bs * np.sqrt( m_bs / Ncfg)
+        if return_mbs:
+            bs_mean   = corr_bs[key].mean(axis=(0,1))
+            d_corr_bs = corr_bs[key] - bs_mean
+            corr_bs   = bs_mean + d_corr_bs * np.sqrt( m_bs / Ncfg)
+        else:
+            corr_bs   = corr_bs.mean(axis=1)
+            bs_mean   = corr_bs.mean(axis=0)
+            d_corr_bs = corr_bs - bs_mean
+            corr_bs   = bs_mean + d_corr_bs * np.sqrt( m_bs / Ncfg)
 
-    if return_bs_list:
-        return corr_bs, bs_list
-    else:
-        return corr_bs
+        if return_bs_list:
+            return corr_bs, bs_list
+        else:
+            return corr_bs
 
 
 def bs_prior(Nbs, mean=0., sdev=1., seed=None, dist='normal'):

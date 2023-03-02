@@ -1,0 +1,80 @@
+% NEW COMMANDS
+\def\comment#1{\textbf{\color{red} COMMENT: #1}}
+\def\addcite#1{{\color{red}CITE[#1]}}
+% Refs
+\def\eqref#1{{(\ref{#1})}}
+\newcommand{\eqnref}[1]{Eq.~\eqref{#1}}
+\newcommand{\Eqnref}[1]{Equation~\eqref{#1}}
+\newcommand{\figref}[1]{Fig.~\ref{#1}}
+\newcommand{\Figref}[1]{Figure~\ref{#1}}
+\newcommand{\secref}[1]{Sec.~\ref{#1}}
+\newcommand{\appref}[1]{App.~\ref{#1}}
+% std for Table is to always use Table - strange
+\newcommand{\tabref}[1]{Table~\ref{#1}}
+\newcommand{\Tabref}[1]{Table~\ref{#1}}
+
+% define colors
+\definecolor{kngrey}{HTML}{A6AAA9}
+\definecolor{knred}{HTML}{EC5D57}
+\definecolor{knorange}{HTML}{F39019}
+\definecolor{knyellow}{HTML}{F5D328}
+\definecolor{kngreen}{HTML}{70BF41}
+\definecolor{knblue}{HTML}{51A7F9}
+\definecolor{knpurple}{HTML}{B36AE2}
+
+\def\mc#1{{\mathcal #1}}
+\def\ol#1{{\overline{#1}}}
+\def\nxlo#1{{N$^{#1}$LO}}
+
+\DeclareMathOperator{\st}{str}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\Erfc}{Erfc}
+\DeclareMathOperator{\Erf}{Erf}
+\DeclareMathOperator{\Tr}{Tr}
+
+\def\one{\ensuremath{\mathbbm{1}}}
+
+% Greek Letters
+\def\a{{\alpha}}
+\def\b{{\beta}}
+\def\d{{\delta}}
+\def\D{{\Delta}}
+\def\e{{\epsilon}}
+\def\g{{\gamma}}
+\def\G{{\Gamma}}
+\def\k{{\kappa}}
+\def\l{{\lambda}}
+\def\L{{\Lambda}}
+\def\m{{\mu}}
+\def\n{{\nu}}
+\def\w{{\omega}}
+\def\O{{\Omega}}
+\def\S{{\Sigma}}
+\def\s{{\sigma}}
+\def\t{{\tau}}
+\def\th{{\theta}}
+\def\x{{\xi}}
+
+%slash's
+\def\Dslash{D\hskip-0.65em /}
+\def\dslash{{\partial\hskip-0.5em /}}
+\def\vslash{{\rlap \slash v}}
+\def\qbar{{\overline q}}
+
+% Jargon
+\def\CPT{{$\chi$PT}}
+\def\QCPT{{Q$\chi$PT}}
+\def\PQCPT{{PQ$\chi$PT}}
+\def\tr{\text{tr}}
+\def\str{\text{str}}
+\def\diag{\text{diag}}
+\def\vit{{\it v}}
+\def\vD{\vit\cdot D}
+\def\tb{{\tilde b}}
+
+\def\gmo{{$\D_{\rm GMO}$}\xspace}
+
+
+% code
+\def\chroma{\texttt{Chroma}\xspace}
+\def\quda{\texttt{QUDA}\xspace}

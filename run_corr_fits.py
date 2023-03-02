@@ -29,7 +29,8 @@ importlib.reload(fa)
 def main():
     parser = argparse.ArgumentParser(description='analysis of simult. fit to the 4 baryons that form the gmo relation, also fit the gmo product correlator directly')
     parser.add_argument('fit_params', help='input file to specify fit')
-    parser.add_argument('fit_type',help='specify simultaneous baryon fit with or without gmo product correlator as input')
+    parser.add_argument('--fit_type',help='specify simultaneous baryon fit with or without gmo product correlator as input')
+    parser.add_argument('--gmo_fit_type',help='specify fit type for gmo product corr',required=False)
     parser.add_argument('pdf',help='generate a pdf and output plot?',default=True)
     parser.add_argument('--bs',help='perform bootstrapping?',default=False, action='store_true') 
     parser.add_argument('--bsn',help='number of bs samples',type=int,default=2000) 
@@ -48,9 +49,6 @@ def main():
         file = '/Users/grantdb/lqcd/data/c51_2pt_octet_decuplet.h5'
     else:
         file = '/home/gmoney/lqcd/data/c51_2pt_octet_decuplet.h5'
-    with h5.File(file,"r") as f:
-        ensembles = {}
-        ensembles = list(f.keys())
 
     p_dict = fp.p_dict
     abbr = p_dict['abbr']
@@ -70,24 +68,60 @@ def main():
             prior = gv.gvar(prior_nucl)
 
     # pull in raw corr data
-    raw_corr = {}
     nucleon_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='proton')
     lam_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='lambda_z')
     xi_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='xi_z')
     sigma_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='sigma_p')
     gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'])
+    print(gmo_ratio_raw)
     ncfg = xi_corr['PS'].shape[0]
-    raw_corr['proton'] = nucleon_corr
-    raw_corr['lam'] = lam_corr
-    raw_corr['sigma'] = sigma_corr
-    raw_corr['xi'] = xi_corr
-    raw_corr['gmo_ratio'] = gmo_ratio_raw
 
-    if args.fit_type == 'simult_baryons':
-        model_type = args.fit_type
-        prior = ld.fetch_prior(model_type,p_dict)
+    model_type = args.fit_type
+    prior = ld.fetch_prior(model_type,p_dict)
+    print(prior)
+
+    if args.fit_type == 'simult_gmo_linear':
+        prior_new = fp.prior
+        if args.bs:
+            bsN = args.bsn
+            ncfg = nucleon_corr['PS'].shape[0]
+            bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=bsN)
+            gmo_bs = ld.G_gmo_bs(file,p_dict['abbr'],bsN=bsN,bs_list=bs_list)
+            print(gmo_bs,'bs')
+            gmo_direct = fa.fit_analysis(t_range=p_dict
+            ['t_range'],gmo_fit_type=args.gmo_fit_type, simult=True,t_period=64,states=p_dict['simult_gmo_linear'],p_dict=p_dict, 
+            n_states=p_dict['n_states'],prior=prior_new,
+            nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
+            sigma_corr_data=sigma_corr,gmo_corr_data=gmo_bs,model_type=model_type)
+            print(gmo_direct)
+            fit_out = gmo_direct.get_fit()
+            gmo_eff_mass = gmo_direct.get_gmo_effective(gmo_ratio=gmo_ratio_raw)
+            if args.pdf:
+                plot1 = gmo_direct.return_best_fit_info(bs=True)
+                plot2 = gmo_direct.plot_delta_gmo(correlators_gv=gmo_ratio_raw,t_plot_min=0,t_plot_max=20,
+                model_type=model_type,fig_name = None,show_fit=True)
+                plot3 = gmo_direct.plot_gmo_effective_mass(effective_mass=gmo_eff_mass,
+                t_plot_min=0,t_plot_max=40,model_type=model_type,show_fit=True,fig_name=None)
+
+                output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
+                output_pdf = output_dir+".pdf"
+                with PdfPages(output_pdf) as pp:
+                    pp.savefig(plot1)
+                    pp.savefig(plot2)
+                    pp.savefig(plot3)
+        else:
+            gmo_direct = fa.fit_analysis(t_range=p_dict
+            ['t_range'],p_dict=p_dict,t_period=64,states=p_dict['simult_baryons_gmo'],
+            n_states=p_dict['n_states'],prior=prior_new,simult=True,
+            nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
+            sigma_corr_data=sigma_corr,gmo_corr_data=gmo_ratio_raw,
+            model_type=model_type)
+            print(gmo_direct)
+            fit_out= gmo_direct.get_fit()
+
+    elif args.fit_type == 'simult_baryons':
         sim_baryons = fa.fit_analysis(t_range=p_dict
-        ['t_range'],simult=True,t_period=64,states=p_dict['gmo_states'],p_dict=p_dict, n_states=p_dict['n_states'],prior=prior,
+        ['t_range'],simult=True,t_period=64,states=p_dict['simult_baryons'],p_dict=p_dict, n_states=p_dict['n_states'],prior=prior,
         nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,sigma_corr_data=sigma_corr,
         gmo_corr_data=None,model_type=model_type)
         print(sim_baryons)
@@ -113,85 +147,102 @@ def main():
 
             output_pdf.close()
     
-    # 1. perform fits to individual baryon correlators #
+    elif args.fit_type == 'simult_baryons_gmo':
+        prior_new = fp.prior
+        if args.bs:
+            bsN = args.bsn
+            ncfg = nucleon_corr['PS'].shape[0]
+            bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=bsN)
+            gmo_bs = ld.G_gmo_bs(file,p_dict['abbr'],bsN=bsN,bs_list=bs_list)
+            print(gmo_bs,'bs')
+            gmo_direct = fa.fit_analysis(t_range=p_dict
+            ['t_range'],simult=True,t_period=64,states=p_dict['simult_baryons_gmo'],p_dict=p_dict, 
+            n_states=p_dict['n_states'],prior=prior_new,
+            nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
+            sigma_corr_data=sigma_corr,gmo_corr_data=gmo_bs,model_type=model_type)
+            print(gmo_direct)
+            fit_out = gmo_direct.get_fit()
+            gmo_eff_mass = gmo_direct.get_gmo_effective(gmo_ratio=gmo_ratio_raw)
+            if args.pdf:
+                plot1 = gmo_direct.return_best_fit_info(bs=False)
+                plot2 = gmo_direct.plot_delta_gmo(correlators_gv=gmo_ratio_raw,t_plot_min=0,t_plot_max=20,
+                model_type=model_type,fig_name = None,show_fit=True)
+                plot3 = gmo_direct.plot_gmo_effective_mass(effective_mass=gmo_eff_mass,
+                t_plot_min=0,t_plot_max=40,model_type=model_type,show_fit=True,fig_name=None)
+
+                output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
+                output_pdf = output_dir+".pdf"
+                with PdfPages(output_pdf) as pp:
+                    pp.savefig(plot1)
+                    pp.savefig(plot2)
+                    pp.savefig(plot3)
+        else:
+            gmo_direct = fa.fit_analysis(t_range=p_dict
+            ['t_range'],p_dict=p_dict,t_period=64,states=p_dict['simult_baryons_gmo'],
+            n_states=p_dict['n_states'],prior=prior_new,simult=True,
+            nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
+            sigma_corr_data=sigma_corr,gmo_corr_data=gmo_ratio_raw,
+            model_type=model_type)
+            print(gmo_direct)
+            fit_out= gmo_direct.get_fit()
 
 
     elif args.fit_type == 'gmo_direct':
-        model_type = args.fit_type
-        prior = ld.fetch_prior(model_type,p_dict)
-        gmo_direct = fa.fit_analysis(t_range=p_dict
-        ['t_range'],simult=False,t_period=64,states=p_dict['gmo_direct'],p_dict=p_dict, 
-        n_states=p_dict['n_states'],prior=prior,
-        nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=None,sigma_corr_data=None,
-        gmo_corr_data=gmo_ratio_raw,model_type=model_type)
-        print(gmo_direct)
-        fit_out = gmo_direct.get_fit()
-        gmo_eff_mass = gmo_direct.get_gmo_effective(gmo_ratio=gmo_ratio_raw)
-        if args.pdf:
-            plot1 = gmo_direct.return_best_fit_info(bs=False)
-            plot2 = gmo_direct.plot_delta_gmo(correlators_gv=gmo_ratio_raw,t_plot_min=0,t_plot_max=20,
-            model_type=model_type,fig_name = None,show_fit=True)
-            plot3 = gmo_direct.plot_gmo_effective_mass(effective_mass=gmo_eff_mass,
-            t_plot_min=0,t_plot_max=40,model_type=model_type,show_fit=True,fig_name=None)
-
-            output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
-            output_pdf = output_dir+".pdf"
-            with PdfPages(output_pdf) as pp:
-                pp.savefig(plot1)
-                pp.savefig(plot2)
-                pp.savefig(plot3)
         if args.bs:
             bsN = args.bsn
-            ncfg = gmo_ratio_raw['PS'].shape[0]
+            ncfg = nucleon_corr['PS'].shape[0]
             bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=bsN)
-            prelim_fit_keys = sorted(fit_out.p.keys()) 
-            output = {key : [] for key in prelim_fit_keys}
             gmo_bs = ld.G_gmo_bs(file,p_dict['abbr'],bsN=bsN,bs_list=bs_list)
-            def resample_corr(bs_list,n):
-                resampled_raw_corr_data = ({key : gmo_bs[key][bs_list[n, :]]
-                for key in gmo_bs.keys()})
-                resampled_corr_gv = gv.dataset.avg_data(resampled_raw_corr_data)
-                return resampled_corr_gv
+            gmo_direct = fa.fit_analysis(t_range=p_dict
+            ['t_range'],simult=False,t_period=64,states=['gmo'],p_dict=p_dict, 
+            n_states=p_dict['n_states'],prior=prior,
+            nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=None,sigma_corr_data=None,
+            gmo_corr_data=gmo_bs,model_type=model_type)
+            print(gmo_direct)
+            fit_out = gmo_direct.get_fit()
 
-            for j in tqdm.tqdm(range(bsN), desc='bootstrap'):
-                gv.switch_gvar() 
-                
-                temp_gmo_corr = resample_corr(bs_list,j)
-                print(temp_gmo_corr)
-                # make fit with resampled correlators
-                gmo_bs_out = fitter.fitter(t_range=p_dict
-                ['t_range'],t_period=64,simult=False, p_dict=p_dict, states= p_dict['gmo_direct'],n_states=p_dict['n_states'],prior=prior,
-                nucleon_corr=None,lam_corr=None, xi_corr=None,
-                sigma_corr=None,gmo_ratio_corr=temp_gmo_corr,model_type=model_type)
-                temp_fit = gmo_bs_out.get_fit()
-                print(temp_fit)
+            gmo_eff_mass = gmo_direct.get_gmo_effective(gmo_ratio=gmo_ratio_raw)
+            if args.pdf:
+                plot1 = gmo_direct.return_best_fit_info(bs=False)
+                plot2 = gmo_direct.plot_delta_gmo(correlators_gv=gmo_ratio_raw,t_plot_min=0,t_plot_max=20,
+                model_type=model_type,fig_name = None,show_fit=True)
+                plot3 = gmo_direct.plot_gmo_effective_mass(effective_mass=gmo_eff_mass,
+                t_plot_min=0,t_plot_max=40,model_type=model_type,show_fit=True,fig_name=None)
 
-                for key in prelim_fit_keys:
-                    p = temp_fit.pmean[key]
-                    output[key].append(p)
-
-                gv.restore_gvar()
-
-                # print results -- should be similar to previous results
-            table = gv.dataset.avg_data(output, bstrap=True)
-            print(gv.tabulate(table))
-        #     print(gmo_bs)
-        #     gmo_direct_bs = fa.fit_analysis(t_range=p_dict
-        #     ['t_range'],simult=False,t_period=64,states=p_dict['gmo_direct'],p_dict=p_dict, 
-        #     n_states=p_dict['n_states'],prior=prior,
-        #     nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=None,sigma_corr_data=None,
-        #     gmo_corr_data=gmo_bs,model_type=model_type)
-        #     print(gmo_direct_bs)
-        #     fit_out = gmo_direct_bs.get_fit()
-        # else:
+                output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
+                output_pdf = output_dir+".pdf"
+                with PdfPages(output_pdf) as pp:
+                    pp.savefig(plot1)
+                    pp.savefig(plot2)
+                    pp.savefig(plot3)
             
+        else:
+            print(gmo_ratio_raw)
+            prior_new = fp.prior
+            gmo_direct = fa.fit_analysis(t_range=p_dict
+            ['t_range'],simult=False,t_period=64,states=p_dict['gmo_direct'],p_dict=p_dict, 
+            n_states=p_dict['n_states'],prior=prior_new,
+            nucleon_corr_data=None,lam_corr_data=None, xi_corr_data=None,sigma_corr_data=None,
+            gmo_corr_data=gmo_ratio_raw,model_type=model_type)
+            print(gmo_direct)
+            fit_out = gmo_direct.get_fit()
+            gmo_eff_mass = gmo_direct.get_gmo_effective(gmo_ratio=gmo_ratio_raw)
 
+            if args.pdf:
+                plot1 = gmo_direct.return_best_fit_info(bs=False)
+                plot2 = gmo_direct.plot_delta_gmo(correlators_gv=gmo_ratio_raw,t_plot_min=0,t_plot_max=20,
+                model_type=model_type,fig_name = None,show_fit=True)
+                plot3 = gmo_direct.plot_gmo_effective_mass(effective_mass=gmo_eff_mass,
+                t_plot_min=0,t_plot_max=40,model_type=model_type,show_fit=True,fig_name=None)
+
+                output_dir = 'fit_results/{0}/{1}_{0}'.format(p_dict['abbr'],model_type)
+                output_pdf = output_dir+".pdf"
+                with PdfPages(output_pdf) as pp:
+                    pp.savefig(plot1)
+                    pp.savefig(plot2)
+                    pp.savefig(plot3)
         
-
-
-
-
-            # output_pdf.close()
+    # individual correlator fits to form "naive" gmo relation
     elif args.fit_type == 'xi':
         prior_xi = {k:v for k,v in prior.items() if 'xi' in k}
         # print(new_d)
@@ -282,101 +333,7 @@ def main():
                 pp.savefig(plot2)
             output_pdf.close()
 
-    elif args.fit_type == 'simult_baryons_gmo':
-        model_type = args.fit_type
-        prior = ld.fetch_prior(model_type,p_dict)
-        gmo_ = fa.fit_analysis(t_range=p_dict
-        ['t_range'],p_dict=p_dict,t_period=64,states=p_dict['simult_baryons_gmo'],n_states=p_dict['n_states'],prior=prior,simult=True,
-        nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
-        sigma_corr_data=sigma_corr,gmo_corr_data=gmo_ratio_raw,
-        model_type=model_type)
-        print(gmo_)
-        fit_out= gmo_.get_fit()
-
-        out_path = 'fit_results/{0}_{1}'.format(p_dict['abbr'],model_type)
-        if os.path.exists(out_path):
-            pass
-        else:
-            os.mkdir(out_path)
-        ncfg = nucleon_corr['PS'].shape[0]
-
-        bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=100)
-
-        bscorr = ld.G_gmo_bs(file_h5=file,bs_list=bs_list,abbr=abbr,bsN=50)
-        print(bscorr, "hi")
-
-
-        ld.pickle_out(fit_out=fit_out,out_path=out_path,species="baryon_w_gmo")
-
-
-        # if args.pdf:
-        #     gmo_.make_gmo_plots(gmo_corr=gmo_ratio_raw, model_type='simult_baryons_gmo',p_dict=p_dict,
-        #      fig_name='plots/{0}_{1}'.format(abbr,model_type),pdf=True)
-
-        if args.bs:
-            '''
-            1) make a large number of “bootstrap copies” of the original input data and prior that differ from each other by random 
-            amounts characteristic of the underlying randomness in the original data; 
-            2) repeat the entire fit analysis for each bootstrap copy of the data, extracting fit results from each
-            3) use the variation of the fit results from bootstrap copy to bootstrap copy to determine an approximate probability distribution (possibly non-gaussian) 
-            for the fit parameters and/or functions of them: the results from each bootstrap fit are samples from that distribution.
-            '''
-            ncfg = nucleon_corr['PS'].shape[0]
-            # ncfg_gmo = gmo_ratio_raw['PS'].shape[0]
-            bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=100)
-            # bs_list_gmo = bs.get_bs_list(Ndata=ncfg_gmo,Nbs=100)
-            # def resample_correlator(raw_corr,bs_list, n,gmo=None):
-            #     if gmo:
-            #         resampled_raw_corr_data = ({key : raw_corr[key][bs_list_gmo[n, :]]
-            #     for key in raw_corr.keys()})
-            #     else:
-            #         resampled_raw_corr_data = ({key : raw_corr[key][bs_list[n, :], :]
-            #     for key in raw_corr.keys()})
-            #     resampled_corr_gv = resampled_raw_corr_data
-            #     return resampled_corr_gv
-
-            # def remove_nans(d):
-            #     for key in d.keys():
-            #         if type(d[key]) == float and isnan(d[key]):
-            #             del d[key]
-            #         elif type(d[key]) == gv.BufferDict():
-            #             remove_nans(d[key])
-            
-            prelim_fit_keys = sorted(fit_out.p.keys()) 
-            output = {key : [] for key in prelim_fit_keys}
-            bs_N = 50
-            bscorr = ld.G_gmo_bs(file_h5=file,abbr=abbr,bsN=50,bs_list=bs_list)
-            print(bscorr.keys())
-
-            for j in tqdm.tqdm(range(bs_N), desc='bootstrap'):
-                gv.switch_gvar() 
-                nucleon_bs  = ld.resample_correlator(nucleon_corr,bs_list=bs_list,n=j)
-                xi_bs       = ld.resample_correlator(xi_corr,bs_list=bs_list,n=j)
-                lam_bs      = ld.resample_correlator(lam_corr,bs_list=bs_list,n=j)
-                sigma_bs    = ld.resample_correlator(sigma_corr,bs_list=bs_list,n=j)
-                # gmo_bs_corr = ld.G_gmo_bs(file_h5=file,abbr=abbr,bsN=50)
-
-                    
-                # make fit with resampled correlators
-                gmo_bs = fa.fit_analysis(t_range=p_dict
-                ['t_range'],t_period=64,simult=True, p_dict=p_dict, states= p_dict['gmo_states'],n_states=p_dict['n_states'],prior=prior,
-                nucleon_corr_data=nucleon_bs,lam_corr_data=lam_bs, xi_corr_data=xi_bs,
-                sigma_corr_data=sigma_bs,delta_corr_data=None,gmo_corr_data=gmo_new,
-                piplus_corr_data=None,kplus_corr_data=None,model_type=model_type)
-                temp_fit = gmo_bs.get_fit()
-                print(temp_fit)
-
-                for key in prelim_fit_keys:
-                    p = temp_fit.pmean[key]
-                    output[key].append(p)
-
-                gv.restore_gvar()
-
-                # print results -- should be similar to previous results
-            table = gv.dataset.avg_data(output, bstrap=True)
-            print(gv.tabulate(table))
-
-
+    
     ''' xpt routines 
     '''
     # if args.xpt:

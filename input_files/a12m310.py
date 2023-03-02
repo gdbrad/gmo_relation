@@ -13,13 +13,13 @@ p_dict = {
         'sigma' : [6, 15],
         'xi' : [6, 15],
         'proton' : [6, 15],
-        'delta' : [6,15],
+        'delta' : [5,15],
         'lam' : [6, 15],
         'gmo' : [2,10], 
         'pi' : [5,30],
         'kplus': [8,28],
-	    'gmo_ratio':[6,15],
-        'simult_baryons': [6,15],
+	    'gmo_ratio':[5,15],
+        'simult_baryons': [5,15],
         'simult_baryons_gmo':[4,15]
     },
     'n_states' : {

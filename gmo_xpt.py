@@ -40,6 +40,9 @@ class GMO(object):
         return self._G_gmo()
 
     def _G_gmo(self,log=None):
+        '''
+        GMO product correlator formed without bootstrap
+        '''
         result = {}
         # print(result)
         temp = {}

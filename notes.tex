@@ -1,0 +1,198 @@
+\documentclass[prd,tightenlines,preprintnumbers,showpacs,superscriptaddress,notitlepage,nofootinbib,eqsecnum,floatfix,notitlepage]{revtex4-1}
+% LOAD PREAMBLE
+\documentclass[options]{style}
+\input{preamble}
+
+
+% NEW COMMANDS
+%\input{../command_list}
+
+\input{def}
+% \input{affiliations}
+
+\newcount\hour \newcount\hourminute \newcount\minute
+\hour=\time \divide \hour by 60
+\hourminute=\hour \multiply \hourminute by 60
+\minute=\time \advance \minute by -\hourminute
+\newcommand{\mydate}{\ \today \ - \number\hour :\number\minute}
+
+
+\begin{document}
+
+\title{Notes on GMO relation}
+
+
+
+\author{Andr\'{e}~Walker-Loud}
+
+\date{\mydate}
+
+\begin{abstract}
+Notes for GMO project.
+\end{abstract}
+\maketitle
+\tableofcontents
+%-------------------------------------------------------------------------------------------------
+%-------------------------------------------------------------------------------------------------
+
+\section{Motivation}
+The Gell-Mann--Okubo (GMO) baryon mass relation is
+\begin{equation}\label{eq:D_GMO}
+\D_{\rm GMO} = M_\L +\frac{1}{3}M_\S -\frac{2}{3} M_N -\frac{2}{3} M_\Xi\, .
+\end{equation}
+This quantity is interesting because it is a flavor-27 quantity, which means that the first non-vanishing correction to this relation in SU(3) baryon $\chi$PT arises from the one-loop sunset diagrams that are proportional to $m_q^{3/2}$ power, and thus non-analytic in the quark mass.
+One then anticipates that this quantity will exhibit a more rapid change quark mass dependence than the baryon masses themselves.
+While SU(3) baryon $\chi$PT is not a converging EFT in general, it may be that for this quantity, there is a convergence.
+
+The GMO relation has been studied previously in the literature in Refs.~\cite{Beane:2006pt,Walker-Loud:2011yaf}.
+Both of these results from from DWF on asqtad ensembles, at a single lattice spacing of $a\approx0.12$~fm and with $m_\pi \gtrsim300$~MeV.
+
+We have results on 30 ensembles with four lattice spacings, $a\approx\{0.06, 0.09, 0.12, 0.15\}$~fm and seven pion masses in the range $130\lesssim m_\pi\lesssim400$~MeV.
+Our aim is to explore how well SU(3) HB$\chi$PT describes the results, and, if the convergence pattern is healthy.
+
+
+
+
+\section{Analysis Notes}
+
+\subsection{Fitting the correlators to extract \gmo}
+We examined fitting the individual baryon correlation functions and then forming the \gmo combination, but this yielded a result consistent with zero.
+In contrast, if we construct the GMO correlation function
+\begin{equation}\label{eq:C_GMO}
+C_{\rm GMO}(t) = \frac{C_\L(t) C_\S^{1/3}(t)}{C_N^{2/3}(t) C_\Xi^{2/3}(t)}\, ,
+\end{equation}
+and examine its effective mass, this yields values that are several sigma different from zero.
+We therefore need a more involved analysis of the correlation functions in order to extract precise values of \gmo on each ensemble.
+Even if the two-point functions of each baryon are positive definite, we are not guaranteed that if we were to describe $C_{\rm GMO}(t)$ with a sum of exponentials, there overlap factors would all be positive.
+
+However, we can probably fit this product correlation function in combination with the individual baryon correlation functions, in the following way, to obtain precise values of \gmo.
+First, pull out the ground state overlap factors and energies from each single baryon correlation function, for which the correlator model is then
+\begin{equation}
+C_{\rm GMO}(t) =
+    Z_{\rm GMO} e^{-\D_{\rm GMO} t}
+    \frac{
+        \left[1 + \sum_n r_{\L,n}e^{-\D_{\L,n}t}\right]
+        \left[ 1 + \sum_n r_{\S,n}e^{-\D_{\S,n}t}\right]^{1/3}
+        }{
+        \left[1 + \sum_n r_{N,n}e^{-\D_{N,n}t}\right]^{2/3}
+        \left[ 1 + \sum_n r_{\Xi,n}e^{-\D_{\Xi,n}t}\right]^{2/3}
+        }\, ,
+\end{equation}
+where $\D_{\rm GMO}$ is the mass relation in \eqnref{eq:D_GMO}, $r_{B,n}$ are the ratios of the excited state to ground state overlap factor for baryon $B$ and $\D_{B,n}$ are the excited state mass splittings of baryon $B$ with the ground state mass.
+
+In order to assess our ability to control the systematic uncertainty in the extraction of $\D_{\rm GMO}$, we use three different fit function-models.  In all cases, the GMO correlator is fit simultaneously with the four octet baryon correlators.
+\begin{enumerate}
+\item For the ground state GMO parameters, use the combination appearing in \eqnref{eq:C_GMO}:
+\begin{align}
+Z_{\rm GMO} &= \frac{A_{\L,0} A_{\S,0}^{1/3}}{A_{N,0}^{2/3} A_{\Xi,0}^{2/3}}\, ,
+\nonumber\\
+\D_{\rm GMO} &= M_\L +\frac{1}{3}M_\S -\frac{2}{3} M_N -\frac{2}{3} M_\Xi\, ;
+\end{align}
+
+\item Treat $\D_{\rm GMO}$ as an independent fit parameter, but take the overlap factors from the baryons;
+
+\item Treat both $\D_{\rm GMO}$ and $Z_{\rm GMO}$ as independent fit parameters;
+\end{enumerate}
+If everything is working well, all three options will give similar results for $\D_{\rm GMO}$ and $Z_{\rm GMO}$.  It will be interesting to compare the fit quality and logGBF factors from the three fits.
+
+
+
+
+
+
+\subsection{New and Old smearing on same ensemble}
+On the a09m310 ensemble, I find that it is beneficial (reduced uncertainty) to fit all 4 correlators from the two different smearings.  To compare, I chose an optimal fit from fitting just the old data, as compared to the old \& new simultaneous fit.
+The resulting analysis yields
+
+\bigskip
+\begin{tabular}{p{3.25in}p{3.25in}}
+Old data only & New and Old smearing data\\
+{\scriptsize
+\begin{verbatim}
+['proton_SS', 'proton_PS']
+n_state = 3, t = [6, 20)
+Least Square Fit:
+  chi2/dof [dof] = 0.42 [22]    Q = 0.99    logGBF = 643.55
+
+Parameters:
+      proton_E_0       0.4931 (38)       [     0.495 (25) ]
+     proton_zS_0   0.00002171 (56)       [ 0.0000220 (50) ]
+     proton_zP_0     0.001138 (38)       [   0.00120 (25) ]
+log(proton_dE_1)        -1.34 (52)       [     -1.27 (70) ]
+     proton_zP_1       0.0014 (18)       [    0.0012 (36) ]
+     proton_zS_1      5.7(8.7)e-06       [  0.000022 (44) ]
+log(proton_dE_2)        -1.25 (63)       [     -1.27 (70) ]
+     proton_zP_2      0.00004 (72)       [    0.0012 (36) ]
+     proton_zS_2    0.0000193 (72)       [  0.000022 (44) ]
+-----------------------------------------------------------
+     proton_dE_1         0.26 (14)       [      0.28 (20) ]
+     proton_dE_2         0.29 (18)       [      0.28 (20) ]
+
+Settings:
+  svdcut/n = 3.8e-06/1    tol = (1e-08,1e-10,1e-10*)
+                   (itns/time = 11/0.0)
+  fitter = scipy_least_squares    method = trf\end{verbatim}
+}
+&
+{\scriptsize
+\begin{verbatim}
+['proton_S1S1', 'proton_PS1', 'proton_S2S2', 'proton_PS2']
+n_state = 3, t = [9, 20)
+Least Square Fit:
+  chi2/dof [dof] = 0.74 [44]    Q = 0.9    logGBF = 1270.7
+
+Parameters:
+      proton_E_0       0.4927 (28)       [     0.495 (25) ]
+    proton_zS2_0   0.00002163 (41)       [ 0.0000220 (50) ]
+    proton_zS1_0    0.0003264 (72)       [  0.000340 (50) ]
+     proton_zP_0     0.001137 (27)       [   0.00120 (25) ]
+log(proton_dE_1)        -1.08 (20)       [     -1.27 (70) ]
+     proton_zP_1      0.00210 (76)       [    0.0012 (36) ]
+    proton_zS1_1     0.000343 (89)       [   0.00034 (68) ]
+    proton_zS2_1      9.1(4.3)e-06       [  0.000022 (44) ]
+log(proton_dE_2)        -1.55 (65)       [     -1.27 (70) ]
+     proton_zP_2       0.0008 (15)       [    0.0012 (36) ]
+    proton_zS1_2      0.00036 (19)       [   0.00034 (68) ]
+    proton_zS2_2    -0.000019 (16)       [  0.000022 (44) ]
+-----------------------------------------------------------
+     proton_dE_1        0.340 (68)       [      0.28 (20) ]
+     proton_dE_2         0.21 (14)       [      0.28 (20) ]
+
+Settings:
+  svdcut/n = 1.6e-06/1    tol = (1e-08,1e-10,1e-10*)
+                   (itns/time = 27/0.1)
+  fitter = scipy_least_squares    method = trf
+\end{verbatim}
+}
+\end{tabular}
+
+
+\begin{figure}
+\begin{tabular}{cc}
+\includegraphics[width=0.49\textwidth]{figures/a09m310_proton_E_0_stability_old}
+&
+\includegraphics[width=0.49\textwidth]{figures/a09m310_proton_E_0_stability_new_old}
+\\
+\includegraphics[width=0.49\textwidth]{figures/a09m310_m_proton_old}
+&
+\includegraphics[width=0.49\textwidth]{figures/a09m310_m_proton_new_old}
+\\
+(Old)& (New \& Old)
+\end{tabular}
+\caption{\label{fig:stability}
+Stability analysis.
+}
+\end{figure}
+
+
+
+
+
+\bibliography{c51_bib}
+
+
+
+%-------------------------------------------------------------------------------------------------
+%-------------------------------------------------------------------------------------------------
+
+\end{document}

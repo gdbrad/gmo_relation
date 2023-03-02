@@ -20,7 +20,7 @@ class fit_analysis(object):
     def __init__(self, t_range,t_period, prior,p_dict, n_states=None, model_type = None,states=None,simult=None,
                  nucleon_corr_data=None,lam_corr_data=None,
                  xi_corr_data=None,sigma_corr_data=None,
-                 gmo_corr_data = None
+                 gmo_corr_data = None,gmo_fit_type=None
                  ):
         #All fit ensembles (manual and automatic) must have these variables
         
@@ -68,6 +68,7 @@ class fit_analysis(object):
         self.gmo_corr_gv = gmo_corr_gv
         self.states=states 
         self.simult = simult
+        self.gmo_fit_type = gmo_fit_type
         # self.multiple_smear = None
         self.n_states = n_states
         self.prior = prior
@@ -93,7 +94,7 @@ class fit_analysis(object):
         if index in list(self.fits.keys()):
             return self.fits[index]
         else:
-            temp_fit = fitter(n_states=n_states, prior=self.prior,p_dict=self.p_dict, t_range=t_range,states=self.states,simult=self.simult, t_period=t_period,model_type=self.model_type,
+            temp_fit = fitter(n_states=n_states,gmo_fit_type=self.gmo_fit_type, prior=self.prior,p_dict=self.p_dict, t_range=t_range,states=self.states,simult=self.simult, t_period=t_period,model_type=self.model_type,
                                nucleon_corr=self.nucleon_corr_gv,lam_corr=self.lam_corr_gv,
                                xi_corr=self.xi_corr_gv,sigma_corr=self.sigma_corr_gv,
                                gmo_ratio_corr=self.gmo_corr_gv).get_fit()
@@ -159,10 +160,18 @@ class fit_analysis(object):
             xi_corr = self.xi_corr_gv
             gmo_ratio_corr = self.gmo_corr_gv
 
+        elif model_type == "simult_gmo_linear":
+            nucleon_corr = self.nucleon_corr_gv
+            lam_corr = self.lam_corr_gv
+            sigma_corr = self.sigma_corr_gv
+            xi_corr = self.xi_corr_gv
+            gmo_ratio_corr = self.gmo_corr_gv
+
+
         else:
             return None 
 
-        return fitter(n_states=self.n_states, states=self.states,prior=self.prior,simult=self.simult, p_dict=self.p_dict, 
+        return fitter(n_states=self.n_states,gmo_fit_type=self.gmo_fit_type, states=self.states,prior=self.prior,simult=self.simult, p_dict=self.p_dict, 
                         t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
                       nucleon_corr=nucleon_corr,lam_corr=lam_corr,xi_corr=xi_corr,sigma_corr=sigma_corr,gmo_ratio_corr=gmo_ratio_corr)._make_models_simult_fit()
 
@@ -250,7 +259,7 @@ class fit_analysis(object):
             plt.title("gmo_ratio_eff for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(0.0,0.005)
+        plt.ylim(0.0,0.03)
          # Get unique markers when making legend
         handles, labels = plt.gca().get_legend_handles_labels()
         temp = {}
@@ -325,7 +334,7 @@ class fit_analysis(object):
             plt.title("Best fit for $N_{states} = $%s" %(self.n_states['simult_baryons_gmo']), fontsize = 24)
         
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(0.5,0.7)
+        # plt.ylim(0.5,0.7)
 
         plt.xlabel('$t$', fontsize = 24)
         plt.ylabel('$G_{GMO}(t)$')

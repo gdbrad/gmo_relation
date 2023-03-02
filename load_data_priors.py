@@ -61,7 +61,6 @@ def G_gmo(file_h5,abbr):
 
 def get_raw_corr_new(file_h5,abbr):
     data = {}
-    
     with h5.File(file_h5,"r") as f:
         for baryon in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
             particle_path = '/'+abbr+'/'+baryon
@@ -70,36 +69,20 @@ def get_raw_corr_new(file_h5,abbr):
     return data
 
 def G_gmo_bs(file_h5,abbr,bsN,bs_list):
+    raw = get_raw_corr_new(file_h5,abbr)
+    bs_M = raw['proton_SS'].shape[0] 
+    bs_N = 2000 # In real-world cases, this would probably be much larger
+    bs_list = bs.get_bs_list(bs_M,bs_N)
     data = {}
     gmo = {}
     for src_snk in ['PS', 'SS']:
-        gmo['gmo_'+src_snk] = {}
-        for baryon in['lambda_z', 'sigma_p', 'proton', 'xi_z']:
-            data[baryon+'_'+src_snk] = np.zeros(bsN)
-    temp = {}
-    temp = get_raw_corr_new(file_h5=file_h5, abbr=abbr)
-    for n in range(bsN):
-        corr_bs_copy = resample_correlator(temp,bs_list=bs_list,n=n)
-        for src_snk in ['PS', 'SS']:
-            for baryon in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
-                data[baryon+'_'+src_snk][n] = np.mean(corr_bs_copy[baryon+'_'+src_snk], axis=(0,1),dtype=object)
-        for src_snk in ['PS', 'SS']:
-            gmo['gmo_'+src_snk][n] = data['lambda_z_'+src_snk][n] *np.power(data['sigma_p_'+src_snk][n], 1/3) *np.power(data['proton_'+src_snk][n], -2/3) * np.power(data['xi_z_'+src_snk][n], -2/3)
-    # hacky way to eliminate the indexing done above, there is certainly a cleaner way to do #
-    print(gmo) 
-    #         Samples_ps= gmo['gmo_PS']
-    #         Samples_ss= gmo['gmo_SS']
-    #         iterable_ps = (Samples_ps.values(),n)
-    #         vals_ps = np.fromiter(iterable_ps, dtype=float)
-    #         vals_ss = np.fromiter(Samples_ss.values(), dtype=float)
-    #         gmo_bs = {}
-    #         gmo_bs['gmo_PS'] = vals_ps
-    #         gmo_bs['gmo_SS'] = vals_ss
-    # print(vals_ps.size())
-    #     # print(gmo_bs)
-    # correlators = gv.dataset.avg_data(gmo_bs, bstrap=True)
+        for baryon in ['lambda_z', 'sigma_p', 'proton', 'xi_z']:
+            data[baryon+'_'+src_snk] = raw[baryon+'_'+src_snk][bs_list].mean(axis=0)
+            gmo[src_snk] = np.zeros_like(data[baryon+'_'+src_snk])
+        gmo[src_snk] += data['lambda_z_'+src_snk] *np.power(data['sigma_p_'+src_snk], 1/3) *np.power(data['proton_'+src_snk], -2/3) * np.power(data['xi_z_'+src_snk], -2/3)
+    correlators = gv.dataset.avg_data(gmo, bstrap=True)
 
-    return gmo
+    return correlators
 
 def resample_correlator(raw_corr,bs_list, n):
     resampled_raw_corr_data = ({key : raw_corr[key][bs_list[n, :], :]
@@ -122,3 +105,5 @@ def fetch_prior(model_type,p_dict):
             prior_nucl[key] = list(df[key].values())[:length]
         prior = gv.gvar(prior_nucl)
     return prior
+
+# def get_data_phys_pt()
