@@ -77,8 +77,8 @@ def main():
     ncfg = xi_corr['PS'].shape[0]
 
     model_type = args.fit_type
-    prior = ld.fetch_prior(model_type,p_dict)
-    print(prior)
+    # prior = ld.fetch_prior(model_type,p_dict)
+    # print(prior)
 
     if args.fit_type == 'simult_gmo_linear':
         prior_new = fp.prior
