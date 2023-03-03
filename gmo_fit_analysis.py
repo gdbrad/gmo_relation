@@ -259,7 +259,7 @@ class fit_analysis(object):
             plt.title("gmo_ratio_eff for $N_{states} = $%s" %(self.n_states['gmo']), fontsize = 24)
 
         plt.xlim(t_plot_min-0.5, t_plot_max-.5)
-        plt.ylim(0.0,0.03)
+        # plt.ylim(0.0,0.03)
          # Get unique markers when making legend
         handles, labels = plt.gca().get_legend_handles_labels()
         temp = {}

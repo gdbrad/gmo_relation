@@ -449,9 +449,8 @@ class gmo_linear_model(lsqfit.MultiFitterModel):
         elif self.gmo_fit_type == 'no_gmo_input':
             A_0 = z_l[0]*np.power(z_s[0],1/3)*np.power(z_p[0],-2/3) * np.power(z_x[0],-2/3)
             delta_gmo = (lam_E0 + 1/3*sigma_E0 - 2/3*proton_E0 - 2/3*xi_E0)
-            print(delta_gmo)
             output_gmo = A_0 * np.exp(-delta_gmo * t)
-            print(output_gmo)
+
         for j in range(1, self.n_states):
             p_esc = proton_E0 + np.sum([np.exp(proton_log_dE[k]) for k in range(j)], axis=0)
             output_p = z_p[j] * np.exp(-p_esc*t)
@@ -467,10 +466,10 @@ class gmo_linear_model(lsqfit.MultiFitterModel):
             
         output_gmo =(
             output_gmo*( 
-                (output_l) 
-            * (np.power(output_s,1/3))
-            * (np.power(output_p,-2/3) 
-            * (np.power(output_x,-2/3))
+                (1+output_l) 
+            * (np.power(1+output_s,1/3))
+            * (np.power(1+output_p,-2/3) 
+            * (np.power(1+output_x,-2/3))
             )))
         # for j in range(1, self.n_states):
         #     d_gmo_esc =  gmo_E0+ np.sum([np.exp(gmo_log_dE[k]) for k in range(j)], axis=0)
