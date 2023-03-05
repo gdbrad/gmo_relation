@@ -10,7 +10,7 @@ class fitter(object):
                  nucleon_corr=None,p_dict=None,lam_corr=None,
                  xi_corr=None,sigma_corr=None,
                  gmo_ratio_corr=None,
-                 model_type=None,simult=None,gmo_fit_type = None):
+                 model_type=None,simult=None,gmo_type = None):
 
         self.n_states = n_states
         self.t_period = t_period
@@ -25,7 +25,7 @@ class fitter(object):
         self.fit = None
         self.model_type = model_type
         self.simult = simult
-        self.gmo_fit_type = gmo_fit_type
+        self.gmo_type = gmo_type
         self.states = states
         self.prior = self._make_prior(prior)
         effective_mass = {}
@@ -288,6 +288,7 @@ class fitter(object):
 
                 param_keys = {
                     'gmo_E0'    : 'gmo_E0',
+                    'z_gmo'     : 'z_gmo',
                     'gmo_log(dE)': 'gmo_log(dE)',
                     'gmo_z'      : 'gmo_z_'+sink,
                     'sigma_E0'  : 'sigma_E0',
@@ -304,7 +305,7 @@ class fitter(object):
                     'sigma_z'   : 'sigma_z_'+sink 
                                     }
                 models = np.append(models,
-                        gmo_linear_model(datatag="gmo_ratio_"+sink,gmo_fit_type=self.gmo_fit_type,
+                        gmo_linear_model(datatag="gmo_ratio_"+sink,gmo_type=self.gmo_type,
                         t=list(range(self.t_range['gmo_ratio'][0], self.t_range['gmo_ratio'][1])),
                         param_keys=param_keys, n_states=self.n_states['gmo_ratio']))
 
@@ -392,7 +393,6 @@ class GMO_direct(lsqfit.MultiFitterModel):
 
         return np.log(self.fitfcn(p, t) / self.fitfcn(p, t+1))
 
-
     # The prior determines the variables that will be fit by multifitter --
     # each entry in the prior returned by this function will be fitted
     def buildprior(self, prior, mopt=None, extend=False):
@@ -410,10 +410,10 @@ class gmo_linear_model(lsqfit.MultiFitterModel):
     TODO is the normalization coefficient the single octet relation ?? 
     We treat the linear combination of the 4 baryons as a single fit parameter, then fit to 3rd? order in the taylor expansion with $/delta B$ as the overlap factor for the product correlator 
     '''
-    def __init__(self, gmo_fit_type,datatag, t, param_keys, n_states):
+    def __init__(self, gmo_type,datatag, t, param_keys, n_states):
         super(gmo_linear_model, self).__init__(datatag)
         # variables for fit
-        self.gmo_fit_type = gmo_fit_type
+        self.gmo_type = gmo_type
         self.t = np.array(t)
         self.n_states = n_states
         # keys (strings) used to find the wf_overlap and energy in a parameter dictionary
@@ -424,6 +424,7 @@ class gmo_linear_model(lsqfit.MultiFitterModel):
             t = self.t
         
         gmo_E0 = p[self.param_keys['gmo_E0']]
+        z_gmo =  p[self.param_keys['z_gmo']]
         gmo_log_dE = p[self.param_keys['gmo_log(dE)']]
         proton_E0 = p[self.param_keys['proton_E0']]
         sigma_E0 = p[self.param_keys['sigma_E0']]
@@ -437,19 +438,38 @@ class gmo_linear_model(lsqfit.MultiFitterModel):
         z_s = p[self.param_keys['sigma_z']]
         z_x = p[self.param_keys['xi_z']]
         z_l = p[self.param_keys['lam_z']]
+        output_gmo = 0
 
-        if self.gmo_fit_type == 'overlap_from_baryons':
+        if self.gmo_type == 'd_gmo':
+            '''
+            ratio of overlap factors determined entirely by baryons
+            fitting d_gmo 
+            '''
             A_0 = z_l[0]*np.power(z_s[0],1/3)*np.power(z_p[0],-2/3) * np.power(z_x[0],-2/3)
-            output_gmo = A_0 * np.exp(-gmo_E0 * t)
+            output_gmo += A_0 * np.exp(-gmo_E0 * t)
 
-        elif self.gmo_fit_type == 'overlap_from_gmo':
+        elif self.gmo_type == 'z_gmo':
+            '''
+            overlap factor Z_GMO as ind. fit param
+            '''
             A_0 = p[self.param_keys['gmo_z']]
-            output_gmo = A_0[0] * np.exp(-gmo_E0 * t)
+            delta_gmo = (lam_E0 + 1/3*sigma_E0 - 2/3*proton_E0 - 2/3*xi_E0)
+            output_gmo += A_0[0] * np.exp(-delta_gmo * t)
 
-        elif self.gmo_fit_type == 'no_gmo_input':
+        elif self.gmo_type == 'd_z_gmo':
+            '''
+            fitting both z_gmo and d_gmo
+            '''
+            A_0 = p[self.param_keys['gmo_z']]
+            output_gmo += A_0[0] * np.exp(-gmo_E0 * t)
+
+        elif self.gmo_type == '4_baryon':
+            '''
+            fit params determined entirely by baryons
+            '''
             A_0 = z_l[0]*np.power(z_s[0],1/3)*np.power(z_p[0],-2/3) * np.power(z_x[0],-2/3)
             delta_gmo = (lam_E0 + 1/3*sigma_E0 - 2/3*proton_E0 - 2/3*xi_E0)
-            output_gmo = A_0 * np.exp(-delta_gmo * t)
+            output_gmo += A_0 * np.exp(-delta_gmo * t)
 
         for j in range(1, self.n_states):
             p_esc = proton_E0 + np.sum([np.exp(proton_log_dE[k]) for k in range(j)], axis=0)

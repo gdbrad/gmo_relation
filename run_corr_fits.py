@@ -1,4 +1,3 @@
-from math import isnan
 import tqdm
 import h5py as h5
 import numpy as np
@@ -30,7 +29,7 @@ def main():
     parser = argparse.ArgumentParser(description='analysis of simult. fit to the 4 baryons that form the gmo relation, also fit the gmo product correlator directly')
     parser.add_argument('fit_params', help='input file to specify fit')
     parser.add_argument('--fit_type',help='specify simultaneous baryon fit with or without gmo product correlator as input')
-    parser.add_argument('--gmo_fit_type',help='specify fit type for gmo product corr',required=False)
+    parser.add_argument('--gmo_type',help='specify fit type for gmo product corr',required=False)
     parser.add_argument('pdf',help='generate a pdf and output plot?',default=True)
     parser.add_argument('--bs',help='perform bootstrapping?',default=False, action='store_true') 
     parser.add_argument('--bsn',help='number of bs samples',type=int,default=2000) 
@@ -43,8 +42,6 @@ def main():
     sys.path.append(os.path.dirname(os.path.abspath(args.fit_params)))
     fp = importlib.import_module(
         args.fit_params.split('/')[-1].split('.py')[0])
-
-    
     if platform.system() == 'Darwin':
         file = '/Users/grantdb/lqcd/data/c51_2pt_octet_decuplet.h5'
     else:
@@ -73,7 +70,6 @@ def main():
     xi_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='xi_z')
     sigma_corr = ld.get_raw_corr(file,p_dict['abbr'],particle='sigma_p')
     gmo_ratio_raw = ld.G_gmo(file,p_dict['abbr'])
-    print(gmo_ratio_raw)
     ncfg = xi_corr['PS'].shape[0]
 
     model_type = args.fit_type
@@ -87,14 +83,20 @@ def main():
             ncfg = nucleon_corr['PS'].shape[0]
             bs_list = bs.get_bs_list(Ndata=ncfg,Nbs=bsN)
             gmo_bs = ld.G_gmo_bs(file,p_dict['abbr'],bsN=bsN,bs_list=bs_list)
-            print(gmo_bs,'bs')
             gmo_direct = fa.fit_analysis(t_range=p_dict
-            ['t_range'],gmo_fit_type=args.gmo_fit_type, simult=True,t_period=64,states=p_dict['simult_gmo_linear'],p_dict=p_dict, 
+            ['t_range'], simult=True,t_period=64,states=p_dict['simult_gmo_linear'],p_dict=p_dict, 
             n_states=p_dict['n_states'],prior=prior_new,
             nucleon_corr_data=nucleon_corr,lam_corr_data=lam_corr, xi_corr_data=xi_corr,
             sigma_corr_data=sigma_corr,gmo_corr_data=gmo_bs,model_type=model_type)
-            print(gmo_direct)
+            # print(gmo_direct)
             fit_out = gmo_direct.get_fit()
+            all_fits = {}
+            # print('z_gmo'+'/n',fit_out['z_gmo'])
+            print('d_gmo'+'\n', fit_out['d_gmo'])
+            # print('d_z_gmo'+'\n',fit_out['d_z_gmo'])
+            # print('4_baryon'+'\n',fit_out['4_baryon'])
+            # for observable in ['z_gmo','d_gmo','d_z_gmo','4_baryon']:
+            #     print(str(observable)+'\n',fit_out[observable])
             gmo_eff_mass = gmo_direct.get_gmo_effective(gmo_ratio=gmo_ratio_raw)
             if args.pdf:
                 plot1 = gmo_direct.return_best_fit_info(bs=True)

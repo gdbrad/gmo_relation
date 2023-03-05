@@ -14,19 +14,19 @@ p_dict = {
     'bs_seed' : 'a12m180L',
 
    't_range' : {
-        'sigma' : [10,20],
-        'xi' :  [10,20],
-        'proton' :   [10,20],
-        'delta' : [10,20],
-        'lam' : [10,20],
+        'sigma' : [7,22],
+        'xi' :  [7,22],
+        'proton' :   [7,22],
+        'delta' : [7,22],
+        'lam' : [7,22],
         'gmo' : [2,10], 
         'pi' : [5,30],
         'kplus': [8,28],
-	    'gmo_ratio':[10,20],
-	    'gmo_direct':[10,20],
-        'simult_baryons':   [10,20],
-        'simult_baryons_gmo':[10,20],
-        'simult_gmo_linear':[10,20],
+	    'gmo_ratio':[7,22],
+	    'gmo_direct':[7,22],
+        'simult_baryons':   [7,22],
+        'simult_baryons_gmo':[7,22],
+        'simult_gmo_linear':[7,22],
 
     },
     'n_states' : {
@@ -43,7 +43,7 @@ p_dict = {
         'gmo_direct':2,
         'simult_baryons':2,
         'simult_baryons_gmo':2,
-        'simult_gmo_linear':2
+        'simult_gmo_linear':3
     },
     
     'make_plots' : True,
@@ -67,10 +67,10 @@ prior = {
     'xi_E': np.array(['0.8(2.2)', '1.28(32)', '1.45(32)', '1.55(32)'], dtype=object),
     'xi_z_PS': np.array(['0.0(3.3)e-05', '0.0(3.3)e-05', '0.0(3.3)e-06', '0.0(3.3)e-06'],dtype=object),
     'xi_z_SS': np.array(['4.4(4.4)e-07', '4.4(4.4)e-07', '4.4(4.4)e-07', '4.4(4.4)e-07'],dtype=object),
-    'gmo_E': np.array(['0.001(10)', '0.004(15)'], dtype=object),
+    'gmo_E': np.array(['0.008(10)', '0.009(15)'], dtype=object),
     'gmo_z_PS': np.array(['0.6(60)', '0.6(60)'], dtype=object),
     'gmo_z_SS': np.array(['0.6(60)', '0.6(60)'], dtype=object),
-    'delta_B': np.array(['0.7(7.5)', '0.7(7.5)'], dtype=object),}
+    'z_gmo': np.array(['0.7(7.5)', '0.7(7.5)'], dtype=object),}
 
 '''
 $\delta_{GMO}$ xpt extrapolation model and prior information

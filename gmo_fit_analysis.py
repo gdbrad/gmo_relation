@@ -17,10 +17,10 @@ import mass_relations as ma
 
 class fit_analysis(object):
 
-    def __init__(self, t_range,t_period, prior,p_dict, n_states=None, model_type = None,states=None,simult=None,
+    def __init__(self, t_range,t_period, prior,p_dict, n_states=None, model_type = None,states=None,simult=None,gmo_type=None,
                  nucleon_corr_data=None,lam_corr_data=None,
                  xi_corr_data=None,sigma_corr_data=None,
-                 gmo_corr_data = None,gmo_fit_type=None
+                 gmo_corr_data = None
                  ):
         #All fit ensembles (manual and automatic) must have these variables
         
@@ -67,9 +67,8 @@ class fit_analysis(object):
         self.xi_corr_gv = xi_corr_gv
         self.gmo_corr_gv = gmo_corr_gv
         self.states=states 
+        self.gmo_type = gmo_type
         self.simult = simult
-        self.gmo_fit_type = gmo_fit_type
-        # self.multiple_smear = None
         self.n_states = n_states
         self.prior = prior
         self.t_range = t_range
@@ -78,7 +77,60 @@ class fit_analysis(object):
         self.t_min = int(t_start/2)
         self.t_max = int(np.min([t_end, t_end]))
         self.fits = {}
+        
         #self.bs = None
+
+    # def __str__(self):
+    #     output = "Model: %s" %(self.model)
+    #     for obs in ['z_gmo', 'z_baryons','d_gmo','d_z_gmo','4_baryon']:
+    #         output += '\n---\n'
+
+    #         if obs == 'w0':
+    #             output += "\nw0: %s\n\n" %(self.w0)
+    #             for a_xx in ['a06', 'a09', 'a12', 'a15']:
+    #                 w0_a = self.interpolate_w0a(latt_spacing=a_xx)
+    #                 output += 'w0/{}: {}'.format(a_xx, w0_a).ljust(22)  + '=> %s/fm: %s\n'%(a_xx, self.w0 / w0_a)
+
+    #         elif obs == 't0':
+    #             output += "\nsqrt(t0): %s\n\n" %(self.sqrt_t0)
+    #             for a_xx in ['a06', 'a09', 'a12', 'a15']:
+    #                 t0_a2 = self.interpolate_t0a2(latt_spacing=a_xx)
+    #                 output += 't0/{}^2: {}'.format(a_xx, t0_a2).ljust(22)  + '=> %s/fm: %s\n'%(a_xx, self.sqrt_t0 / np.sqrt(t0_a2))
+
+
+
+    #         output += '\nParameters:\n'
+    #         my_str = self.fit[obs].format(pstyle='m')
+    #         for item in my_str.split('\n'):
+    #             for key in self.fit_keys['w0']:
+    #                 re = key+' '
+    #                 if re in item:
+    #                     output += item + '\n'
+
+    #         output += '\n'
+    #         output += self.fit[obs].format(pstyle=None)
+
+    @property
+    def posterior(self):
+        return self._get_posterior()
+
+    # Returns dictionary with keys fit parameters, entries gvar results
+    def _get_posterior(self, param=all):
+        output = {}
+        for observable in ['z_gmo','d_gmo','d_z_gmo','4_baryon']:
+            if param is None:
+                output[observable] = {param : self.get_fit[observable].p[param] for param in self.fit_keys[observable]}
+            elif param == 'all':
+                output[observable] = self.get_fit[observable].p
+            else:
+                output[observable] = self.get_fit[observable].p[param]
+
+        return output
+
+    # def fit(self):
+    #     for observable in ['z_gmo','d_gmo','d_z_gmo','4_baryon']:
+    #         self.fit[observable] =self.get_fit[observable]
+    #     return self.fit
 
     def get_fit(self, t_range=None, n_states=None,t_period=None):
         if t_range is None:
@@ -91,16 +143,18 @@ class fit_analysis(object):
         index = tuple((t_range[key][0], t_range[key][1], n_states[key]) for key in sorted(t_range.keys()))
         # print(index)
 
+        temp_fit = {}
         if index in list(self.fits.keys()):
             return self.fits[index]
         else:
-            temp_fit = fitter(n_states=n_states,gmo_fit_type=self.gmo_fit_type, prior=self.prior,p_dict=self.p_dict, t_range=t_range,states=self.states,simult=self.simult, t_period=t_period,model_type=self.model_type,
+            for gmo_type in ['z_gmo','d_gmo','d_z_gmo','4_baryon']:
+                temp_fit[gmo_type] = fitter(n_states=n_states,prior=self.prior,p_dict=self.p_dict, t_range=t_range,states=self.states,simult=self.simult, t_period=t_period,model_type=self.model_type,gmo_type=gmo_type,
                                nucleon_corr=self.nucleon_corr_gv,lam_corr=self.lam_corr_gv,
                                xi_corr=self.xi_corr_gv,sigma_corr=self.sigma_corr_gv,
                                gmo_ratio_corr=self.gmo_corr_gv).get_fit()
 
-            self.fits[index] = temp_fit
-            return temp_fit
+                self.fits[gmo_type] = temp_fit[gmo_type]
+        return temp_fit
 
     # type should be either "corr, "gA", or "gV"
     def _get_models(self, model_type=None):
@@ -171,7 +225,7 @@ class fit_analysis(object):
         else:
             return None 
 
-        return fitter(n_states=self.n_states,gmo_fit_type=self.gmo_fit_type, states=self.states,prior=self.prior,simult=self.simult, p_dict=self.p_dict, 
+        return fitter(n_states=self.n_states,gmo_type=self.gmo_type, states=self.states,prior=self.prior,simult=self.simult, p_dict=self.p_dict, 
                         t_range=self.t_range,t_period=self.t_period,model_type=self.model_type,
                       nucleon_corr=nucleon_corr,lam_corr=lam_corr,xi_corr=xi_corr,sigma_corr=sigma_corr,gmo_ratio_corr=gmo_ratio_corr)._make_models_simult_fit()
 
@@ -803,6 +857,8 @@ class fit_analysis(object):
 
     def __str__(self,bs=None):
         output = "Model Type:" + str(self.model_type) 
+        output = output+"\n"
+        # output = "delta_GMO fit type:" + str(self.gmo_type) 
         output = output+"\n"
         if bs:
             output = output +"\t bs: True" 
