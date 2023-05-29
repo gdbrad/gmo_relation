@@ -1,4 +1,5 @@
-fit_results
+plots/
+fit_results/
 andre_notes/
 priors/
 *.pyc
