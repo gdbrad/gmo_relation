@@ -5,7 +5,7 @@ p_dict = {
     'particles' : ['proton'],
     'meson_states' : ['piplus','kplus'],
     'gmo_states': ['sigma_p','lambda_z','proton','xi_z'], #states for gmo study
-    'gmo_states_all' : ['delta','sigma_p','lambda_z','proton','xi_z','piplus','kplus'],
+    'gmo_states_all' : ['sigma_p','lambda_z','proton','xi_z'],
     'srcs'     :['S'],
     'snks'     :['SS','PS'],
 

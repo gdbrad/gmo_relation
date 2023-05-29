@@ -4,8 +4,9 @@ p_dict = {
     'part' : ['delta_pp', 'kplus', 'lambda_z', 'omega_m', 'piplus', 'proton', 'sigma_p', 'sigma_star_p', 'xi_star_z', 'xi_z'], 
     'particles' : ['proton'],
     'meson_states' : ['piplus','kplus'],
-    'gmo_states': ['sigma_p','lambda_z','proton','xi_z'], #states for gmo study
-    'gmo_states_all' : ['gmo_num','delta','sigma_p','lambda_z','proton','xi_z','piplus','kplus'],
+    'gmo_states': ['sigma_p','lambda_z','proton','xi_z'],
+    # 'gmo_states': ['sigma','lam','proton','xi'], #states for gmo study
+     #states for gmo study
     'srcs'     :['S'],
     'snks'     :['SS','PS'],
 
@@ -19,7 +20,7 @@ p_dict = {
         'pi' : [5,30],
         'kplus': [8,28],
 	    'gmo_ratio':[6,15],
-        'simult_baryons': [4,15],
+        'simult_baryons': [6,14],
         'simult_baryons_gmo':[4,15]
     },
     'n_states' : {
